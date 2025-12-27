@@ -69,6 +69,65 @@
       font-size: 0.95em;
     }
 
+    .radio-group {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .radio-option {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 15px 25px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: white;
+      font-weight: 600;
+      font-size: 1em;
+      min-height: 50px;
+    }
+
+    .radio-option:hover {
+      border-color: #667eea;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    }
+
+    .radio-option input[type="radio"] {
+      cursor: pointer;
+      width: 20px;
+      height: 20px;
+      accent-color: #667eea;
+      margin: 0;
+      flex-shrink: 0;
+    }
+
+    .radio-option input[type="radio"]:checked+label {
+      color: #667eea;
+    }
+
+    .radio-option input[type="radio"]:checked {
+      accent-color: #667eea;
+    }
+
+    .radio-option:has(input[type="radio"]:checked) {
+      border-color: #667eea;
+      background: #f0f4ff;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    .radio-option label {
+      margin-bottom: 0;
+      cursor: pointer;
+      font-weight: 600;
+      color: #333;
+    }
+
     select {
       width: 100%;
       padding: 10px 12px;
@@ -383,13 +442,21 @@
     <div class="controls-section">
       <div class="controls-group">
         <div class="form-group">
-          <label for="apartmentSelect">Appartement</label>
-          <select id="apartmentSelect">
-            <option value="">-- Sélectionner un appartement --</option>
-            <option value="engel">Engel</option>
-            <option value="romains">Romains</option>
-            <option value="carmes">Carmes</option>
-          </select>
+          <label>Appartement</label>
+          <div class="radio-group" id="apartmentGroup">
+            <div class="radio-option">
+              <input type="radio" id="apt_engel" name="apartment" value="engel">
+              <label for="apt_engel">Engel</label>
+            </div>
+            <div class="radio-option">
+              <input type="radio" id="apt_romains" name="apartment" value="romains">
+              <label for="apt_romains">Romains</label>
+            </div>
+            <div class="radio-option">
+              <input type="radio" id="apt_carmes" name="apartment" value="carmes">
+              <label for="apt_carmes">Carmes</label>
+            </div>
+          </div>
         </div>
 
         <div class="form-group">
@@ -441,12 +508,14 @@
       carmes: [
         { name: 'Chambre', code: 'chambre' },
         { name: 'Salon', code: 'salon' },
-        { name: 'Bureau', code: 'bureau' }
+        { name: 'Bureau', code: 'bureau' },
+        { name: 'Cuisine', code: 'cuisine' },
+        { name: 'Salle de bain', code: 'salle_de_bain' }
       ]
     };
 
     // Éléments DOM
-    const apartmentSelect = document.getElementById('apartmentSelect');
+    const apartmentRadios = document.querySelectorAll('input[name="apartment"]');
     const roomSelect = document.getElementById('roomSelect');
     const outputTextarea = document.getElementById('outputTextarea');
     const summarySection = document.getElementById('summarySection');
@@ -501,7 +570,21 @@
     }
 
     // Initialiser les écouteurs
-    apartmentSelect.addEventListener('change', onApartmentChange);
+    apartmentRadios.forEach(radio => {
+      radio.addEventListener('change', onApartmentChange);
+    });
+
+    // Faire en sorte que cliquer sur le bouton entier coche la radio
+    document.querySelectorAll('.radio-option').forEach(option => {
+      option.addEventListener('click', function (e) {
+        if (e.target.tagName !== 'INPUT') {
+          const radio = this.querySelector('input[type="radio"]');
+          radio.checked = true;
+          radio.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      });
+    });
+
     roomSelect.addEventListener('change', onRoomChange);
     selectAllBtn.addEventListener('click', selectAllText);
     copyBtn.addEventListener('click', copyToClipboard);
@@ -513,7 +596,7 @@
 
     // Mettre à jour les options de pièces
     function onApartmentChange() {
-      const apartment = apartmentSelect.value;
+      const apartment = Array.from(apartmentRadios).find(r => r.checked)?.value || '';
       roomSelect.disabled = !apartment;
       roomSelect.innerHTML = '<option value="">-- Sélectionner une pièce --</option>';
 
@@ -535,7 +618,7 @@
 
     // Générer le contenu quand une pièce est sélectionnée
     function onRoomChange() {
-      const apartment = apartmentSelect.value;
+      const apartment = Array.from(apartmentRadios).find(r => r.checked)?.value || '';
       const roomCode = roomSelect.value;
 
       if (!apartment || !roomCode) {
