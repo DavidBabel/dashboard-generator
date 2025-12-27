@@ -757,7 +757,21 @@
     }
 
     // Initialiser au chargement
-    window.addEventListener('DOMContentLoaded', autoLoadTemplate);
+    window.addEventListener('DOMContentLoaded', function () {
+      autoLoadTemplate();
+
+      // Vérifier les paramètres URL pour présélectionner un appartement
+      const urlParams = new URLSearchParams(window.location.search);
+      const selectedFlat = urlParams.get('flat');
+
+      if (selectedFlat) {
+        const radio = document.querySelector(`input[name="apartment"][value="${selectedFlat}"]`);
+        if (radio) {
+          radio.checked = true;
+          radio.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+    });
   </script>
 </body>
 
