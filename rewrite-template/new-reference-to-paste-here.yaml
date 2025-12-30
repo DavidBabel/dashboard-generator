@@ -1,5 +1,5 @@
 views:
-  - title: Chambre Salon
+  - title: Chambre Cuisine
     badges: []
     header:
       layout: responsive
@@ -13,8 +13,8 @@ views:
             heading_style: title
             icon: mdi:brain
           - type: custom:versatile-thermostat-ui-card
-            entity: climate.chauffage_vt_engel_chambre_salon
-            name: Chambre Salon
+            entity: climate.chauffage_vt_romains_chambre_cuisine
+            name: Chambre Cuisine
             disable_name: false
             disable_circle: false
             disable_window: false
@@ -46,8 +46,8 @@ views:
             grid_options:
               columns: 12
               rows: 1
-            entity: binary_sensor.locataire_engel_chambre_salon_present
-            name: Chambre Salon
+            entity: binary_sensor.chauffage_vt_romains_chambre_cuisine_presence_state
+            name: Chambre Cuisine
             icon: mdi:home-account
             show_entity_picture: false
             hide_state: false
@@ -57,29 +57,37 @@ views:
               - last_changed
             vertical: false
             features_position: bottom
+          - type: conditional
+            conditions:
+              - entity: sensor.bouton_romains_chambre_cuisine_batterie
+                state_not: unavailable
+              - entity: sensor.bouton_romains_chambre_cuisine_batterie
+                state_not: unknown
+            card:
+              type: tile
+              entity: sensor.bouton_romains_chambre_cuisine_batterie
+              grid_options:
+                columns: 12
+                rows: 1
+              vertical: false
+              features_position: bottom
           - type: tile
             grid_options:
               columns: 12
               rows: 1
-            entity: sensor.bouton_engel_chambre_salon_batterie
-            vertical: false
-            features_position: bottom
-          - type: tile
-            grid_options:
-              columns: 12
-              rows: 1
-            entity: sensor.chauffage_engel_chambre_salon_battery
+            entity: sensor.chauffage_romains_chambre_cuisine_battery
             vertical: false
             features_position: bottom
           - chart_type: line
             period: 5minute
             type: statistics-graph
             entities:
-              - entity: sensor.chauffage_vt_engel_chambre_salon_ema_temperature
+              - entity: sensor.chauffage_vt_romains_chambre_cuisine_ema_temperature
                 name: Temp. Lissée (EMA)
-              - entity: sensor.chauffage_vt_engel_chambre_salon_regulated_temperature
+              - entity: >-
+                  sensor.chauffage_vt_romains_chambre_cuisine_regulated_temperature
                 name: Temp. Consigne
-              - entity: sensor.temperature_engel_chambre_salon
+              - entity: sensor.temperature_romains_chambre_cuisine
                 name: Temp. Chambre
               - sensor.strasbourg_temperature
             stat_types:
@@ -98,7 +106,7 @@ views:
             heading_style: title
             icon: mdi:thermometer
           - type: thermostat
-            entity: climate.chauffage_engel_chambre_salon
+            entity: climate.chauffage_romains_chambre_cuisine
             show_current_as_primary: false
           - show_current: false
             show_forecast: true
@@ -114,16 +122,18 @@ views:
             icon: mdi:clipboard-text-clock
           - type: history-graph
             entities:
-              - entity: binary_sensor.chauffage_vt_engel_chambre_salon_presence_state
+              - entity: >-
+                  binary_sensor.chauffage_vt_romains_chambre_cuisine_presence_state
                 name: Locataire 🗝️
-              - entity: binary_sensor.telephone_engel_chambre_sud
+              - entity: binary_sensor.telephone_romains_chambre_cuisine
                 name: Locataire 📱
-              - entity: sensor.chauffage_vt_engel_chambre_salon_mode
+              - entity: sensor.chauffage_vt_romains_chambre_cuisine_mode
                 name: Mode 🌡️
-              - entity: binary_sensor.chauffage_vt_engel_chambre_salon_window_state
+              - entity: >-
+                  binary_sensor.chauffage_vt_romains_chambre_cuisine_window_state
                 name: Fenêtre 🪟
-              - entity: climate.chauffage_engel_chambre_salon
-                name: 🛌 Salon
+              - entity: climate.chauffage_romains_chambre_cuisine
+                name: 🛌 Cuisine
               - entity: sensor.strasbourg_temperature
                 name: Temperature exterieure
             grid_options:
@@ -140,8 +150,8 @@ views:
             icon: mdi:calendar
           - type: custom:scheduler-card
             include:
-              - climate.engel_vt_chambre_salon
-              - climate.chauffage_vt_engel_chambre_salon
+              - climate.romains_vt_chambre_cuisine
+              - climate.chauffage_vt_romains_chambre_cuisine
             default_editor: scheme
             title: Planning chauffage
             display_options:
@@ -167,8 +177,8 @@ views:
             grid_options:
               rows: 2
               columns: full
-            entity: automation.reset_temperature_chambre_nord
-            name: Automatisme Salon
+            entity: automation.reset_temperature_chambre_cuisine
+            name: Automatisme Chambre Chambre Cuisine
             icon: mdi:thermometer-auto
             color: orange
             vertical: true

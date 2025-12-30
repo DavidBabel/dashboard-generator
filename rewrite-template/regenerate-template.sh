@@ -76,17 +76,17 @@ sed -i '' "s/${ROOM_CODE}/{room_code}/g" "$TEMP_FILE"
 # 3. Replace all instances of <apartment> with {appart}
 sed -i '' "s/${APARTMENT}/{appart}/g" "$TEMP_FILE"
 
-# 4. Replace "title: <Room Name>" and "name: <Room Name>" with {room_name}
-sed -i '' "s/title: ${ROOM_NAME}/title: {room_name}/g" "$TEMP_FILE"
-sed -i '' "s/name: ${ROOM_NAME}/name: {room_name}/g" "$TEMP_FILE"
+# 4. Replace "title: <Room Name>" and "name: <Room Name>" with "{room_name}" (with quotes)
+sed -i '' "s/title: ${ROOM_NAME}/title: \"{room_name}\"/g" "$TEMP_FILE"
+sed -i '' "s/name: ${ROOM_NAME}/name: \"{room_name}\"/g" "$TEMP_FILE"
 
-# 5. Replace emoji + room name patterns with {room_shortname}
+# 5. Replace emoji + room name patterns with "{room_shortname}" (with quotes)
 # This catches patterns like "name: 🛋️ Salon" or "name: 🛌 Sud"
-sed -i '' "s/name: 🛋️ .*/name: {room_shortname}/g" "$TEMP_FILE"
-sed -i '' "s/name: 🛁 .*/name: {room_shortname}/g" "$TEMP_FILE"
-sed -i '' "s/name: 💼 .*/name: {room_shortname}/g" "$TEMP_FILE"
-sed -i '' "s/name: 🛌 .*/name: {room_shortname}/g" "$TEMP_FILE"
-sed -i '' "s/name: 🍳 .*/name: {room_shortname}/g" "$TEMP_FILE"
+sed -i '' "s/name: 🛋️ .*/name: \"{room_shortname}\"/g" "$TEMP_FILE"
+sed -i '' "s/name: 🛁 .*/name: \"{room_shortname}\"/g" "$TEMP_FILE"
+sed -i '' "s/name: 💼 .*/name: \"{room_shortname}\"/g" "$TEMP_FILE"
+sed -i '' "s/name: 🛌 .*/name: \"{room_shortname}\"/g" "$TEMP_FILE"
+sed -i '' "s/name: 🍳 .*/name: \"{room_shortname}\"/g" "$TEMP_FILE"
 
 echo -e "${GREEN}✓ Template patterns applied${NC}\n"
 

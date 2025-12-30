@@ -46,7 +46,7 @@ views:
             grid_options:
               columns: 12
               rows: 1
-            entity: binary_sensor.chauffage_vt_{appart}_{room_code}_presence_state
+            entity: binary_sensor.locataire_{appart}_{room_code}_present
             name: "{room_name}"
             icon: mdi:home-account
             show_entity_picture: false
@@ -57,20 +57,13 @@ views:
               - last_changed
             vertical: false
             features_position: bottom
-          - type: conditional
-            conditions:
-              - entity: sensor.bouton_{appart}_{room_code}_batterie
-                state_not: unavailable
-              - entity: sensor.bouton_{appart}_{room_code}_batterie
-                state_not: unknown
-            card:
-              type: tile
-              entity: sensor.bouton_{appart}_{room_code}_batterie
-              grid_options:
-                columns: 12
-                rows: 1
-              vertical: false
-              features_position: bottom
+          - type: tile
+            grid_options:
+              columns: 12
+              rows: 1
+            entity: sensor.bouton_{appart}_{room_code}_batterie
+            vertical: false
+            features_position: bottom
           - type: tile
             grid_options:
               columns: 12
@@ -123,7 +116,7 @@ views:
             entities:
               - entity: binary_sensor.chauffage_vt_{appart}_{room_code}_presence_state
                 name: Locataire 🗝️
-              - entity: binary_sensor.telephone_{appart}_{room_code}
+              - entity: binary_sensor.telephone_{appart}_chambre_sud
                 name: Locataire 📱
               - entity: sensor.chauffage_vt_{appart}_{room_code}_mode
                 name: Mode 🌡️
@@ -175,7 +168,7 @@ views:
               rows: 2
               columns: full
             entity: automation.reset_temperature_{room_code}
-            name: Automatisme Chambre {room_name}
+            name: Automatisme {room_name}
             icon: mdi:thermometer-auto
             color: orange
             vertical: true
