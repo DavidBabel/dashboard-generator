@@ -32,27 +32,28 @@ else
 fi
 
 # Step 2: Auto-detect apartment and room from reference
-echo -e "${YELLOW}Step 2: Detecting apartment and room from reference...${NC}"
+echo -e "${YELLOW}Step 2: Detecting apartment and room from template...${NC}"
 
 # Create temporary file for the templated content
 TEMP_FILE=$(mktemp)
 cp "$REFERENCE_FILE" "$TEMP_FILE"
 
-# Extract apartment identifier (e.g., "engel" from "climate.engel_vt_chambre_salon")
-APARTMENT=$(grep -oP 'climate\.\K[a-z_]+(?=_vt_)' "$REFERENCE_FILE" | head -1)
+# Extract apartment identifier (e.g., "engel" from "climate.chauffage_vt_engel_chambre_salon")
+# macOS compatible version using sed
+APARTMENT=$(grep "climate.chauffage_vt_" "$REFERENCE_FILE" | head -1 | sed 's/.*climate\.chauffage_vt_\([a-z]*\)_.*/\1/')
 
-# Extract room code (e.g., "chambre_salon" from "climate.engel_vt_chambre_salon")
-ROOM_CODE=$(grep -oP 'climate\.[a-z_]+_vt_\K[a-z_]+' "$REFERENCE_FILE" | head -1)
+# Extract room code (e.g., "chambre_salon" from "climate.chauffage_vt_engel_chambre_salon")
+ROOM_CODE=$(grep "climate.chauffage_vt_" "$REFERENCE_FILE" | head -1 | sed "s/.*climate\.chauffage_vt_${APARTMENT}_//" | sed 's/[^a-z_].*//')
 
-# Extract room name (e.g., "Chambre Salon" from "name: Chambre Salon")
-# This pattern catches any "name: ..." line that is not already templated
-ROOM_NAME=$(grep -oP "name: \K[^{]+(?=\s*$)" "$REFERENCE_FILE" | grep -v "{" | head -1)
+# Extract room name (e.g., "Chambre Salon" from "title: Chambre Salon")
+# Use title line which appears first and is most reliable
+ROOM_NAME=$(grep "^  - title:" "$REFERENCE_FILE" | head -1 | sed 's/.*title: //')
 
 if [ -z "$APARTMENT" ] || [ -z "$ROOM_CODE" ] || [ -z "$ROOM_NAME" ]; then
-    echo -e "${RED}✗ Could not auto-detect apartment and room from reference file${NC}"
-    echo -e "${RED}  Please ensure the reference file contains valid patterns:${NC}"
-    echo -e "${RED}  - climate.<apartment>_vt_<room_code>${NC}"
-    echo -e "${RED}  - name: <Room Name>${NC}"
+    echo -e "${RED}✗ Could not auto-detect apartment and room from template file${NC}"
+    echo -e "${RED}  Please ensure the template file contains valid patterns:${NC}"
+    echo -e "${RED}  - climate.chauffage_vt_<apartment>_<room_code>${NC}"
+    echo -e "${RED}  - title: <Room Name>${NC}"
     exit 1
 fi
 
@@ -65,23 +66,27 @@ echo -e "${GREEN}✓ Detected room name: ${ROOM_NAME}${NC}\n"
 # Step 3: Create templated version from reference
 echo -e "${YELLOW}Step 3: Creating templated version...${NC}"
 
-# Replace apartment-specific patterns
-# 1. climate.<apartment>_vt_<room_code> → climate.{appart}_vt_{room_code}
-sed -i "s/climate\.${APARTMENT}_vt_${ROOM_CODE}/climate.{appart}_vt_{room_code}/g" "$TEMP_FILE"
+# Replace apartment-specific patterns (macOS compatible sed with '' for in-place edit)
+# 1. climate.chauffage_vt_<apartment>_<room_code> → climate.chauffage_vt_{appart}_{room_code}
+sed -i '' "s/climate\.chauffage_vt_${APARTMENT}_${ROOM_CODE}/climate.chauffage_vt_{appart}_{room_code}/g" "$TEMP_FILE"
 
 # 2. Replace all instances of <room_code> with {room_code} (but avoid double replacement)
-sed -i "s/${ROOM_CODE}/{room_code}/g" "$TEMP_FILE"
+sed -i '' "s/${ROOM_CODE}/{room_code}/g" "$TEMP_FILE"
 
 # 3. Replace all instances of <apartment> with {appart}
-sed -i "s/${APARTMENT}/{appart}/g" "$TEMP_FILE"
+sed -i '' "s/${APARTMENT}/{appart}/g" "$TEMP_FILE"
 
 # 4. Replace "title: <Room Name>" and "name: <Room Name>" with {room_name}
-sed -i "s/title: ${ROOM_NAME}/title: {room_name}/g" "$TEMP_FILE"
-sed -i "s/name: ${ROOM_NAME}/name: {room_name}/g" "$TEMP_FILE"
+sed -i '' "s/title: ${ROOM_NAME}/title: {room_name}/g" "$TEMP_FILE"
+sed -i '' "s/name: ${ROOM_NAME}/name: {room_name}/g" "$TEMP_FILE"
 
 # 5. Replace emoji + room name patterns with {room_shortname}
 # This catches patterns like "name: 🛋️ Salon" or "name: 🛌 Sud"
-sed -i "s/name: [🛋️🛁💼🛌] .*/name: {room_shortname}/g" "$TEMP_FILE"
+sed -i '' "s/name: 🛋️ .*/name: {room_shortname}/g" "$TEMP_FILE"
+sed -i '' "s/name: 🛁 .*/name: {room_shortname}/g" "$TEMP_FILE"
+sed -i '' "s/name: 💼 .*/name: {room_shortname}/g" "$TEMP_FILE"
+sed -i '' "s/name: 🛌 .*/name: {room_shortname}/g" "$TEMP_FILE"
+sed -i '' "s/name: 🍳 .*/name: {room_shortname}/g" "$TEMP_FILE"
 
 echo -e "${GREEN}✓ Template patterns applied${NC}\n"
 
@@ -97,7 +102,7 @@ echo -e "${BLUE}=== Complete ===${NC}"
 echo -e "${GREEN}✓ Backup: $BACKUP_FILE${NC}"
 echo -e "${GREEN}✓ Template: $TEMPLATE_FILE${NC}"
 echo -e "\n${YELLOW}Replacements made:${NC}"
-echo -e "  climate.${APARTMENT}_vt_${ROOM_CODE} → climate.{appart}_vt_{room_code}"
+echo -e "  climate.chauffage_vt_${APARTMENT}_${ROOM_CODE} → climate.chauffage_vt_{appart}_{room_code}"
 echo -e "  ${ROOM_CODE} → {room_code}"
 echo -e "  ${APARTMENT} → {appart}"
 echo -e "  name: ${ROOM_NAME} → name: {room_name}"
@@ -107,4 +112,3 @@ echo "  - {appart}: Apartment identifier (replaces '${APARTMENT}')"
 echo "  - {room_code}: Room code (replaces '${ROOM_CODE}')"
 echo "  - {room_name}: Full room name (replaces '${ROOM_NAME}')"
 echo "  - {room_shortname}: Short room name with emoji"
-

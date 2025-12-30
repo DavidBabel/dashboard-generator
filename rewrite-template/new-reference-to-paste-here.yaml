@@ -13,7 +13,7 @@ views:
             heading_style: title
             icon: mdi:brain
           - type: custom:versatile-thermostat-ui-card
-            entity: climate.engel_vt_chambre_salon
+            entity: climate.chauffage_vt_engel_chambre_salon
             name: Chambre Salon
             disable_name: false
             disable_circle: false
@@ -44,9 +44,9 @@ views:
             icon: mdi:home
           - type: tile
             grid_options:
-              columns: 18
+              columns: 12
               rows: 1
-            entity: binary_sensor.engel_chambre_salon_locataire_present
+            entity: binary_sensor.locataire_engel_chambre_salon_present
             name: Chambre Salon
             icon: mdi:home-account
             show_entity_picture: false
@@ -58,19 +58,30 @@ views:
             vertical: false
             features_position: bottom
           - type: tile
-            entity: sensor.shelly_battery_chambre_salon
+            grid_options:
+              columns: 12
+              rows: 1
+            entity: sensor.bouton_engel_chambre_salon_batterie
             vertical: false
             features_position: bottom
+          - type: tile
             grid_options:
-              columns: 18
+              columns: 12
               rows: 1
+            entity: sensor.chauffage_engel_chambre_salon_battery
+            vertical: false
+            features_position: bottom
           - chart_type: line
             period: 5minute
             type: statistics-graph
             entities:
-              - sensor.engel_chambre_salon_temperature
-              - sensor.engel_vt_chambre_salon_ema_temperature
-              - sensor.engel_vt_chambre_salon_regulated_temperature
+              - entity: sensor.chauffage_vt_engel_chambre_salon_ema_temperature
+                name: Temp. Lissée (EMA)
+              - entity: sensor.chauffage_vt_engel_chambre_salon_regulated_temperature
+                name: Temp. Consigne
+              - entity: sensor.temperature_engel_chambre_salon
+                name: Temp. Chambre
+              - sensor.strasbourg_temperature
             stat_types:
               - mean
             hide_legend: false
@@ -103,13 +114,13 @@ views:
             icon: mdi:clipboard-text-clock
           - type: history-graph
             entities:
-              - entity: binary_sensor.engel_vt_chambre_salon_presence_state
+              - entity: binary_sensor.chauffage_vt_engel_chambre_salon_presence_state
                 name: Locataire 🗝️
-              - entity: binary_sensor.192_168_1_80
-                name: Locataire 📱🧪
-              - entity: sensor.engel_vt_chambre_salon_mode
+              - entity: binary_sensor.telephone_engel_chambre_sud
+                name: Locataire 📱
+              - entity: sensor.chauffage_vt_engel_chambre_salon_mode
                 name: Mode 🌡️
-              - entity: binary_sensor.engel_vt_chambre_salon_window_state
+              - entity: binary_sensor.chauffage_vt_engel_chambre_salon_window_state
                 name: Fenêtre 🪟
               - entity: climate.chauffage_engel_chambre_salon
                 name: 🛌 Salon
@@ -130,6 +141,7 @@ views:
           - type: custom:scheduler-card
             include:
               - climate.engel_vt_chambre_salon
+              - climate.chauffage_vt_engel_chambre_salon
             default_editor: scheme
             title: Planning chauffage
             display_options:
@@ -146,6 +158,23 @@ views:
               - state
               - relative-time
         column_span: 2
+      - type: grid
+        cards:
+          - type: heading
+            heading: Reset automatique du chauffage
+            heading_style: title
+          - type: tile
+            grid_options:
+              rows: 2
+              columns: full
+            entity: automation.reset_temperature_chambre_nord
+            name: Automatisme Salon
+            icon: mdi:thermometer-auto
+            color: orange
+            vertical: true
+            tap_action:
+              action: toggle
+            features_position: bottom
     type: sections
     icon: ""
     cards: []

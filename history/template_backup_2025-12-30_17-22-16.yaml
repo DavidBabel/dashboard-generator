@@ -1,5 +1,5 @@
 views:
-  - title: "{room_name}"
+  - title: {room_name}
     badges: []
     header:
       layout: responsive
@@ -14,7 +14,7 @@ views:
             icon: mdi:brain
           - type: custom:versatile-thermostat-ui-card
             entity: climate.chauffage_vt_{appart}_{room_code}
-            name: "{room_name}"
+            name: {room_name}
             disable_name: false
             disable_circle: false
             disable_window: false
@@ -47,7 +47,7 @@ views:
               columns: 12
               rows: 1
             entity: binary_sensor.locataire_{appart}_{room_code}_present
-            name: "{room_name}"
+            name: {room_name}
             icon: mdi:home-account
             show_entity_picture: false
             hide_state: false
@@ -75,13 +75,9 @@ views:
             period: 5minute
             type: statistics-graph
             entities:
-              - entity: sensor.chauffage_vt_{appart}_{room_code}_ema_temperature
-                name: Temp. Lissée (EMA)
-              - entity: sensor.chauffage_vt_{appart}_{room_code}_regulated_temperature
-                name: Temp. Consigne
-              - entity: sensor.temperature_{appart}_{room_code}
-                name: Temp. Chambre
-              - sensor.strasbourg_temperature
+              - sensor.chauffage_vt_{appart}_{room_code}_ema_temperature
+              - sensor.chauffage_vt_{appart}_{room_code}_regulated_temperature
+              - sensor.temperature_{appart}_{room_code}
             stat_types:
               - mean
             hide_legend: false
@@ -116,14 +112,14 @@ views:
             entities:
               - entity: binary_sensor.chauffage_vt_{appart}_{room_code}_presence_state
                 name: Locataire 🗝️
-              - entity: binary_sensor.telephone_{appart}_chambre_sud
+              - entity: binary_sensor.192_168_1_101
                 name: Locataire 📱
               - entity: sensor.chauffage_vt_{appart}_{room_code}_mode
                 name: Mode 🌡️
               - entity: binary_sensor.chauffage_vt_{appart}_{room_code}_window_state
                 name: Fenêtre 🪟
               - entity: climate.chauffage_{appart}_{room_code}
-                name: "{room_shortname}"
+                name: {room_shortname}
               - entity: sensor.strasbourg_temperature
                 name: Temperature exterieure
             grid_options:
@@ -158,23 +154,6 @@ views:
               - state
               - relative-time
         column_span: 2
-      - type: grid
-        cards:
-          - type: heading
-            heading: Reset automatique du chauffage
-            heading_style: title
-          - type: tile
-            grid_options:
-              rows: 2
-              columns: full
-            entity: automation.reset_temperature_{room_code}
-            name: Automatisme {room_name}
-            icon: mdi:thermometer-auto
-            color: orange
-            vertical: true
-            tap_action:
-              action: toggle
-            features_position: bottom
     type: sections
     icon: ""
     cards: []
