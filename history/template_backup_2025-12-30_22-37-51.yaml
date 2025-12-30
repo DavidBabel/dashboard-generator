@@ -178,7 +178,7 @@ views:
               rows: 2
               columns: full
             entity: automation.reset_temperature_{room_code}
-            name: Automatisme Chambre {room_name}
+            name: Automatisme Chambre Chambre Cuisine
             icon: mdi:thermometer-auto
             color: orange
             vertical: true

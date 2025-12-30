@@ -84,8 +84,7 @@ views:
             entities:
               - entity: sensor.chauffage_vt_{appart}_{room_code}_ema_temperature
                 name: Temp. Lissée (EMA)
-              - entity: >-
-                  sensor.chauffage_vt_{appart}_{room_code}_regulated_temperature
+              - entity: sensor.chauffage_vt_{appart}_{room_code}_regulated_temperature
                 name: Temp. Consigne
               - entity: sensor.temperature_{appart}_{room_code}
                 name: Temp. Chambre
@@ -122,15 +121,13 @@ views:
             icon: mdi:clipboard-text-clock
           - type: history-graph
             entities:
-              - entity: >-
-                  binary_sensor.chauffage_vt_{appart}_{room_code}_presence_state
+              - entity: binary_sensor.chauffage_vt_{appart}_{room_code}_presence_state
                 name: Locataire 🗝️
               - entity: binary_sensor.telephone_{appart}_{room_code}
                 name: Locataire 📱
               - entity: sensor.chauffage_vt_{appart}_{room_code}_mode
                 name: Mode 🌡️
-              - entity: >-
-                  binary_sensor.chauffage_vt_{appart}_{room_code}_window_state
+              - entity: binary_sensor.chauffage_vt_{appart}_{room_code}_window_state
                 name: Fenêtre 🪟
               - entity: climate.chauffage_{appart}_{room_code}
                 name: "{room_shortname}"

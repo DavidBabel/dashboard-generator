@@ -76,9 +76,15 @@ sed -i '' "s/${ROOM_CODE}/{room_code}/g" "$TEMP_FILE"
 # 3. Replace all instances of <apartment> with {appart}
 sed -i '' "s/${APARTMENT}/{appart}/g" "$TEMP_FILE"
 
-# 4. Replace "title: <Room Name>" and "name: <Room Name>" with "{room_name}" (with quotes)
+# 4. Replace "title: <Room Name>" with "{room_name}" (with quotes)
 sed -i '' "s/title: ${ROOM_NAME}/title: \"{room_name}\"/g" "$TEMP_FILE"
-sed -i '' "s/name: ${ROOM_NAME}/name: \"{room_name}\"/g" "$TEMP_FILE"
+
+# 4b. Replace room name in "name:" lines, even when there's text before (like "Automatisme Chambre <Room Name>")
+# This handles cases where the room name appears in the middle of a name field
+sed -i '' "s/\(name: .*\)${ROOM_NAME}/\1{room_name}/g" "$TEMP_FILE"
+
+# 4c. Add quotes around {room_name} when it's alone after "name: "
+sed -i '' "s/name: {room_name}$/name: \"{room_name}\"/g" "$TEMP_FILE"
 
 # 5. Replace emoji + room name patterns with "{room_shortname}" (with quotes)
 # This catches patterns like "name: 🛋️ Salon" or "name: 🛌 Sud"
