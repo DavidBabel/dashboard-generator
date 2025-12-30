@@ -149,9 +149,6 @@ views:
             heading_style: title
             icon: mdi:calendar
           - type: custom:scheduler-card
-            include:
-              - climate.{appart}_vt_{room_code}
-              - climate.chauffage_vt_{appart}_{room_code}
             default_editor: scheme
             title: Planning chauffage
             display_options:
