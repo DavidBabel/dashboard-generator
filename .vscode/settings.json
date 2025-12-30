@@ -1,0 +1,8 @@
+{
+  "yaml.validate": false,
+  "yaml.schemaStore.enable": false,
+  "yaml.customTags": [
+    "!secret scalar",
+    "!include scalar"
+  ]
+}
