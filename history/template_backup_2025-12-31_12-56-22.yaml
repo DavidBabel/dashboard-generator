@@ -96,9 +96,6 @@ sections:
           columns: 36
           rows: 5
         days_to_show: 4
-        min_y_axis: 0
-        fit_y_data: true
-        max_y_axis: 25
     column_span: 3
   - type: grid
     cards:
@@ -109,18 +106,12 @@ sections:
       - type: thermostat
         entity: climate.chauffage_{appart}_{room_code}
         show_current_as_primary: false
-        grid_options:
-          columns: 12
-          rows: 5
       - show_current: false
         show_forecast: true
         type: weather-forecast
         entity: weather.strasbourg
         forecast_type: hourly
         forecast_slots: 6
-        grid_options:
-          columns: 12
-          rows: 2
   - type: grid
     cards:
       - type: heading
@@ -142,36 +133,11 @@ sections:
           - entity: sensor.strasbourg_temperature
             name: Temperature exterieure
         grid_options:
-          rows: 8
+          rows: 7
           columns: full
         logarithmic_scale: false
         hours_to_show: 24
-        min_y_axis: 0
-        fit_y_data: true
-        max_y_axis: 25
     column_span: 3
-  - type: grid
-    cards:
-      - type: heading
-        icon: mdi:account
-        heading: Présence Mensuelle
-        heading_style: title
-      - type: history-graph
-        entities:
-          - entity: binary_sensor.locataire_{appart}_{room_code}_present
-            name:
-              - type: text
-                text: 🔑
-              - type: area
-          - entity: binary_sensor.telephone_{appart}_{room_code}
-            name:
-              - type: text
-                text: 📱
-              - type: area
-        grid_options:
-          columns: full
-        hours_to_show: 720
-    column_span: 4
   - type: grid
     cards:
       - type: heading
@@ -205,14 +171,13 @@ sections:
           rows: 2
           columns: full
         entity: automation.reset_temperature_{room_code}
-        name: Automatisme 🛌 {room_name}
+        name: Automatisme Chambre 🛋️ {room_name}
         icon: mdi:thermometer-auto
         color: orange
         vertical: true
         tap_action:
           action: toggle
         features_position: bottom
-    column_span: 2
 type: sections
 icon: ""
 cards: []

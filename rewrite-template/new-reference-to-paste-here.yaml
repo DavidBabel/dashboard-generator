@@ -1,4 +1,4 @@
-title: 🛋️ Salon
+title: 🛌 Chambre Salon
 badges: []
 header:
   layout: responsive
@@ -12,8 +12,8 @@ sections:
         heading_style: title
         icon: mdi:brain
       - type: custom:versatile-thermostat-ui-card
-        entity: climate.chauffage_vt_engel_salon
-        name: 🛋️ Salon
+        entity: climate.chauffage_vt_engel_chambre_salon
+        name: 🛌 Salon
         disable_name: false
         disable_circle: false
         disable_window: false
@@ -45,8 +45,8 @@ sections:
         grid_options:
           columns: 12
           rows: 1
-        entity: binary_sensor.chauffage_vt_engel_salon_presence_state
-        name: 🛋️ Salon
+        entity: binary_sensor.chauffage_vt_engel_chambre_salon_presence_state
+        name: 🛌 Salon
         icon: mdi:home-account
         show_entity_picture: false
         hide_state: false
@@ -58,13 +58,13 @@ sections:
         features_position: bottom
       - type: conditional
         conditions:
-          - entity: sensor.bouton_engel_salon_batterie
+          - entity: sensor.bouton_engel_chambre_salon_batterie
             state_not: unavailable
-          - entity: sensor.bouton_engel_salon_batterie
+          - entity: sensor.bouton_engel_chambre_salon_batterie
             state_not: unknown
         card:
           type: tile
-          entity: sensor.bouton_engel_salon_batterie
+          entity: sensor.bouton_engel_chambre_salon_batterie
           grid_options:
             columns: 12
             rows: 1
@@ -74,18 +74,18 @@ sections:
         grid_options:
           columns: 12
           rows: 1
-        entity: sensor.chauffage_engel_salon_battery
+        entity: sensor.chauffage_engel_chambre_salon_battery
         vertical: false
         features_position: bottom
       - chart_type: line
         period: 5minute
         type: statistics-graph
         entities:
-          - entity: sensor.chauffage_vt_engel_salon_ema_temperature
+          - entity: sensor.chauffage_vt_engel_chambre_salon_ema_temperature
             name: Temp. Lissée (EMA)
-          - entity: sensor.chauffage_vt_engel_salon_regulated_temperature
+          - entity: sensor.chauffage_vt_engel_chambre_salon_regulated_temperature
             name: Temp. Consigne
-          - entity: sensor.temperature_engel_salon
+          - entity: sensor.temperature_engel_chambre_salon
             name: Temp. Chambre
           - sensor.strasbourg_temperature
         stat_types:
@@ -96,6 +96,9 @@ sections:
           columns: 36
           rows: 5
         days_to_show: 4
+        min_y_axis: 0
+        fit_y_data: true
+        max_y_axis: 25
     column_span: 3
   - type: grid
     cards:
@@ -104,14 +107,20 @@ sections:
         heading_style: title
         icon: mdi:thermometer
       - type: thermostat
-        entity: climate.chauffage_engel_salon
+        entity: climate.chauffage_engel_chambre_salon
         show_current_as_primary: false
+        grid_options:
+          columns: 12
+          rows: 5
       - show_current: false
         show_forecast: true
         type: weather-forecast
         entity: weather.strasbourg
         forecast_type: hourly
         forecast_slots: 6
+        grid_options:
+          columns: 12
+          rows: 2
   - type: grid
     cards:
       - type: heading
@@ -120,24 +129,49 @@ sections:
         icon: mdi:clipboard-text-clock
       - type: history-graph
         entities:
-          - entity: binary_sensor.chauffage_vt_engel_salon_presence_state
+          - entity: binary_sensor.chauffage_vt_engel_chambre_salon_presence_state
             name: Locataire 🗝️
-          - entity: binary_sensor.telephone_engel_salon
+          - entity: binary_sensor.telephone_engel_chambre_salon
             name: Locataire 📱
-          - entity: sensor.chauffage_vt_engel_salon_mode
+          - entity: sensor.chauffage_vt_engel_chambre_salon_mode
             name: Mode 🌡️
-          - entity: binary_sensor.chauffage_vt_engel_salon_window_state
+          - entity: binary_sensor.chauffage_vt_engel_chambre_salon_window_state
             name: Fenêtre 🪟
-          - entity: climate.chauffage_engel_salon
-            name: 🛋️ Salon
+          - entity: climate.chauffage_engel_chambre_salon
+            name: 🛌 Salon
           - entity: sensor.strasbourg_temperature
             name: Temperature exterieure
         grid_options:
-          rows: 7
+          rows: 8
           columns: full
         logarithmic_scale: false
         hours_to_show: 24
+        min_y_axis: 0
+        fit_y_data: true
+        max_y_axis: 25
     column_span: 3
+  - type: grid
+    cards:
+      - type: heading
+        icon: mdi:account
+        heading: Présence Mensuelle
+        heading_style: title
+      - type: history-graph
+        entities:
+          - entity: binary_sensor.locataire_engel_chambre_salon_present
+            name:
+              - type: text
+                text: 🔑
+              - type: area
+          - entity: binary_sensor.telephone_engel_chambre_salon
+            name:
+              - type: text
+                text: 📱
+              - type: area
+        grid_options:
+          columns: full
+        hours_to_show: 720
+    column_span: 4
   - type: grid
     cards:
       - type: heading
@@ -170,14 +204,15 @@ sections:
         grid_options:
           rows: 2
           columns: full
-        entity: automation.reset_temperature_salon
-        name: Automatisme Chambre 🛋️ Salon
+        entity: automation.reset_temperature_chambre_salon
+        name: Automatisme 🛌 Chambre Salon
         icon: mdi:thermometer-auto
         color: orange
         vertical: true
         tap_action:
           action: toggle
         features_position: bottom
+    column_span: 2
 type: sections
 icon: ""
 cards: []
