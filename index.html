@@ -327,14 +327,17 @@
           viewContent = viewContent.replace(regex, pattern.to);
         });
 
-        // Extraire juste le contenu de la view (après "views:\n")
-        const viewMatch = viewContent.match(/^views:\n([\s\S]*)$/);
-        if (viewMatch) {
-          views.push(viewMatch[1]);
-        }
+        // Le template est maintenant une view unique sans "views:" parent
+        // On indente tout le contenu de 2 espaces et on ajoute "  - " devant la première ligne
+        const indentedView = viewContent
+          .split('\n')
+          .map((line, index) => index === 0 ? '  - ' + line : '    ' + line)
+          .join('\n');
+
+        views.push(indentedView);
       });
 
-      // Construire le mega-dashboard
+      // Construire le mega-dashboard avec "views:" au début
       const megaDashboard = 'views:\n' + views.join('\n');
 
       // Afficher le contenu
@@ -443,8 +446,14 @@
         replacements.push(pattern);
       });
 
-      // Afficher le contenu
-      outputTextarea.value = content;
+      // Le template est une view unique, on doit ajouter "views:" et indenter
+      const indentedContent = content
+        .split('\n')
+        .map((line, index) => index === 0 ? '  - ' + line : '    ' + line)
+        .join('\n');
+
+      // Afficher le contenu avec "views:" en préfixe
+      outputTextarea.value = 'views:\n' + indentedContent;
 
       // Mettre à jour le résumé
       updateSummary();

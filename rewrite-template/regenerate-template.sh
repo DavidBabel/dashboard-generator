@@ -45,9 +45,9 @@ APARTMENT=$(grep "climate.chauffage_vt_" "$REFERENCE_FILE" | head -1 | sed 's/.*
 # Extract room code (e.g., "chambre_salon" from "climate.chauffage_vt_engel_chambre_salon")
 ROOM_CODE=$(grep "climate.chauffage_vt_" "$REFERENCE_FILE" | head -1 | sed "s/.*climate\.chauffage_vt_${APARTMENT}_//" | sed 's/[^a-z_].*//')
 
-# Extract room name (e.g., "Chambre Salon" from "title: Chambre Salon")
-# Use title line which appears first and is most reliable
-ROOM_NAME=$(grep "^  - title:" "$REFERENCE_FILE" | head -1 | sed 's/.*title: //')
+# Extract room name (e.g., "Salon" from "title: 🛋️ Salon")
+# Use title line which appears first and is most reliable (now at root level without views:)
+ROOM_NAME=$(grep "^title:" "$REFERENCE_FILE" | head -1 | sed 's/^title: //' | sed 's/^[^a-zA-Z]* //')
 
 if [ -z "$APARTMENT" ] || [ -z "$ROOM_CODE" ] || [ -z "$ROOM_NAME" ]; then
     echo -e "${RED}✗ Could not auto-detect apartment and room from template file${NC}"
@@ -76,8 +76,9 @@ sed -i '' "s/${ROOM_CODE}/{room_code}/g" "$TEMP_FILE"
 # 3. Replace all instances of <apartment> with {appart}
 sed -i '' "s/${APARTMENT}/{appart}/g" "$TEMP_FILE"
 
-# 4. Replace "title: <Room Name>" with "{room_name}" (with quotes)
-sed -i '' "s/title: ${ROOM_NAME}/title: \"{room_name}\"/g" "$TEMP_FILE"
+# 4. Replace "title:" line with "{room_name}" (with quotes)
+# Handle both emoji prefix in title and plain room name
+sed -i '' "s/^title: .*${ROOM_NAME}.*/title: \"{room_name}\"/g" "$TEMP_FILE"
 
 # 4b. Replace room name in "name:" lines, even when there's text before (like "Automatisme Chambre <Room Name>")
 # This handles cases where the room name appears in the middle of a name field
