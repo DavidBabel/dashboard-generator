@@ -139,6 +139,22 @@
       return emoji;
     }
 
+    // Service pour déterminer l'icône MDI basée sur le code de la pièce
+    function getIconForRoom(roomCode) {
+      if (roomCode.includes('chambre')) {
+        return 'mdi:bed';
+      } else if (roomCode === 'salon' || roomCode.includes('salon')) {
+        return 'mdi:sofa';
+      } else if (roomCode === 'salle_de_bain' || roomCode.includes('salle_de_bain')) {
+        return 'mdi:shower';
+      } else if (roomCode === 'bureau' || roomCode.includes('bureau')) {
+        return 'mdi:desk';
+      } else if (roomCode === 'cuisine' || roomCode.includes('cuisine')) {
+        return 'mdi:kitchen';
+      }
+      return 'mdi:home'; // icône par défaut
+    }
+
     // Charger le template à partir d'un fichier
     function loadTemplateFromFile(file) {
       const reader = new FileReader();
@@ -209,6 +225,30 @@
       roomGroup.innerHTML = '';
 
       if (apartment && apartments[apartment]) {
+        // Ajouter le bouton "Toutes" en premier
+        const allRadioOption = document.createElement('div');
+        allRadioOption.className = 'radio-option';
+        allRadioOption.innerHTML = `
+          <input type="radio" id="room_all" name="room" value="all" checked>
+          <label for="room_all">🏠 Toutes</label>
+        `;
+        roomGroup.appendChild(allRadioOption);
+
+        // Ajouter l'écouteur de clic sur le bouton "Toutes"
+        allRadioOption.addEventListener('click', function (e) {
+          if (e.target.tagName !== 'INPUT') {
+            const radio = this.querySelector('input[type="radio"]');
+            radio.checked = true;
+            radio.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        });
+
+        // Ajouter l'écouteur de changement de la radio "Toutes"
+        allRadioOption.querySelector('input[type="radio"]').addEventListener('change', function (e) {
+          onRoomChange(e);
+        });
+
+        // Ajouter les pièces individuelles
         apartments[apartment].forEach((room, index) => {
           const radioId = `room_${room.code}`;
           const emoji = getEmojiForRoom(room.code, room.name);
@@ -236,13 +276,96 @@
             onRoomChange(e);
           });
         });
+
+        // Générer automatiquement le mega-dashboard (car "Toutes" est coché par défaut)
+        generateAllRoomsDashboard(apartment);
       }
 
-      // Reset
-      outputTextarea.value = '';
-      replacementsSection.classList.remove('active');
-      selectAllBtn.disabled = true;
-      copyBtn.disabled = true;
+      // Reset si pas d'appartement
+      if (!apartment) {
+        outputTextarea.value = '';
+        replacementsSection.classList.remove('active');
+        selectAllBtn.disabled = true;
+        copyBtn.disabled = true;
+      }
+    }
+
+    // Générer le mega-dashboard avec toutes les pièces en onglets
+    function generateAllRoomsDashboard(apartment) {
+      if (!apartment || !apartments[apartment]) return;
+
+      const rooms = apartments[apartment];
+      const views = [];
+
+      // Générer une view pour chaque pièce
+      rooms.forEach(room => {
+        const emoji = getEmojiForRoom(room.code, room.name);
+        let shortname = room.name;
+
+        if (shortname.startsWith('Chambre ')) {
+          shortname = shortname.substring(8);
+        }
+        shortname = shortname.replace('Grande ', 'Gr ');
+        shortname = emoji + ' ' + shortname;
+
+        // Titre de l'onglet avec emoji pour le mega-dashboard
+        const tabTitle = emoji + ' ' + room.name;
+
+        // Extraire le contenu de la view du template (sans le "views:" parent)
+        let viewContent = templateContent;
+
+        // Effectuer les remplacements pour cette pièce
+        const patterns = [
+          { from: '{appart}', to: apartment },
+          { from: '{room_code}', to: room.code },
+          { from: '{room_name}', to: tabTitle },  // Utiliser le titre avec emoji pour l'onglet
+          { from: '{room_shortname}', to: shortname }
+        ];
+
+        patterns.forEach(pattern => {
+          const regex = new RegExp(pattern.from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+          viewContent = viewContent.replace(regex, pattern.to);
+        });
+
+        // Extraire juste le contenu de la view (après "views:\n")
+        const viewMatch = viewContent.match(/^views:\n([\s\S]*)$/);
+        if (viewMatch) {
+          views.push(viewMatch[1]);
+        }
+      });
+
+      // Construire le mega-dashboard
+      const megaDashboard = 'views:\n' + views.join('\n');
+
+      // Afficher le contenu
+      outputTextarea.value = megaDashboard;
+
+      // Mettre à jour les remplacements (afficher un résumé)
+      const list = document.getElementById('replacementsList');
+      list.innerHTML = `<div class="replacement-item">
+        <span class="replacement-after">🏠 Dashboard complet avec ${rooms.length} onglets pour ${apartment}</span>
+      </div>`;
+      replacementsSection.classList.add('active');
+
+      // Activer les boutons
+      selectAllBtn.disabled = false;
+      copyBtn.disabled = false;
+
+      // Stocker les valeurs actuelles pour la copie
+      currentValues = {
+        appart: apartment,
+        room_code: 'all',
+        room_name: `Toutes (${rooms.length} pièces)`,
+        room_shortname: '🏠 Toutes'
+      };
+
+      // Copier automatiquement
+      setTimeout(async () => {
+        const success = await copyTextToClipboard(outputTextarea.value);
+        if (success) {
+          showCopyFeedback(`🏠 ${apartment} (${rooms.length} pièces)`);
+        }
+      }, 50);
     }
 
     // Générer le contenu quand une pièce est sélectionnée
@@ -256,6 +379,12 @@
         replacementsSection.classList.remove('active');
         selectAllBtn.disabled = true;
         copyBtn.disabled = true;
+        return;
+      }
+
+      // Si "Toutes" est sélectionné, générer le mega-dashboard
+      if (roomCode === 'all') {
+        generateAllRoomsDashboard(apartment);
         return;
       }
 
@@ -288,11 +417,9 @@
 
       // Copier automatiquement après génération avec le nom de la chambre
       setTimeout(async () => {
-        try {
-          await navigator.clipboard.writeText(outputTextarea.value);
+        const success = await copyTextToClipboard(outputTextarea.value);
+        if (success) {
           showCopyFeedback(emoji + ' ' + room.name);
-        } catch (error) {
-          showError('Erreur lors de la copie : ' + error.message);
         }
       }, 50);
     }
@@ -360,18 +487,66 @@
       outputTextarea.select();
     }
 
+    // Fonction de copie avec fallback pour les iframes
+    async function copyTextToClipboard(text) {
+      // Essayer d'abord l'API Clipboard moderne
+      if (navigator.clipboard && window.isSecureContext) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch (err) {
+          // Fallback si l'API échoue (ex: iframe)
+        }
+      }
+
+      // Fallback avec execCommand pour les iframes
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        textarea.style.top = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textarea);
+
+        if (successful) {
+          return true;
+        }
+      } catch (err) {
+        // Ignorer l'erreur
+      }
+
+      // Dernier recours : sélectionner le texte dans le textarea principal
+      outputTextarea.focus();
+      outputTextarea.select();
+      try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+          return true;
+        }
+      } catch (err) {
+        // Ignorer l'erreur
+      }
+
+      return false;
+    }
+
     // Copier dans le presse-papiers (via bouton manuel)
     async function copyToClipboard() {
-      try {
-        await navigator.clipboard.writeText(outputTextarea.value);
+      const success = await copyTextToClipboard(outputTextarea.value);
+      if (success) {
         if (currentValues) {
           const emoji = getEmojiForRoom(currentValues.room_code, currentValues.room_name);
           showCopyFeedback(emoji + ' ' + currentValues.room_name);
         } else {
           showCopyFeedback();
         }
-      } catch (error) {
-        showError('Erreur lors de la copie : ' + error.message);
+      } else {
+        showError('Copie impossible. Sélectionnez le texte manuellement (Ctrl+C).');
       }
     }
 
