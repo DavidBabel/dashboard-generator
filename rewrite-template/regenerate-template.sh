@@ -95,6 +95,14 @@ sed -i '' "s/name: 💼 .*/name: \"{room_shortname}\"/g" "$TEMP_FILE"
 sed -i '' "s/name: 🛌 .*/name: \"{room_shortname}\"/g" "$TEMP_FILE"
 sed -i '' "s/name: 🍳 .*/name: \"{room_shortname}\"/g" "$TEMP_FILE"
 
+# 6. Replace patterns like "name: Automatisme 🛌 Chambre Salon" with "name: Automatisme {room_shortname}"
+# This handles cases where there's text before the emoji
+sed -i '' "s/\(name: .*\)🛋️ .*/\1{room_shortname}/g" "$TEMP_FILE"
+sed -i '' "s/\(name: .*\)🛁 .*/\1{room_shortname}/g" "$TEMP_FILE"
+sed -i '' "s/\(name: .*\)💼 .*/\1{room_shortname}/g" "$TEMP_FILE"
+sed -i '' "s/\(name: .*\)🛌 .*/\1{room_shortname}/g" "$TEMP_FILE"
+sed -i '' "s/\(name: .*\)🍳 .*/\1{room_shortname}/g" "$TEMP_FILE"
+
 echo -e "${GREEN}✓ Template patterns applied${NC}\n"
 
 # Step 4: Copy to template.yaml
