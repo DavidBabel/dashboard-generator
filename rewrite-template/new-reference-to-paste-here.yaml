@@ -212,7 +212,7 @@ sections:
           rows: 2
           columns: full
         entity: automation.reset_temperature_chambre_salon
-        name: Automatisme 🛌 Chambre Salon
+        name: Automatisme 🛌 🛌 Chambre Salon
         icon: mdi:thermometer-auto
         color: orange
         vertical: true
@@ -224,3 +224,4 @@ type: sections
 icon: ""
 cards: []
 max_columns: 4
+path: chambre_salon

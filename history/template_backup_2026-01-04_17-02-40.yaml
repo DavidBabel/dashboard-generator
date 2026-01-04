@@ -212,7 +212,7 @@ sections:
           rows: 2
           columns: full
         entity: automation.reset_temperature_{room_code}
-        name: Automatisme 🛌 {room_shortname}
+        name: Automatisme {room_shortname}
         icon: mdi:thermometer-auto
         color: orange
         vertical: true
@@ -224,4 +224,3 @@ type: sections
 icon: ""
 cards: []
 max_columns: 4
-path: {room_code}
