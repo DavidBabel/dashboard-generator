@@ -314,9 +314,14 @@
         // Extraire le contenu de la view du template (sans le "views:" parent)
         let viewContent = templateContent;
 
+        // Pour carmes, pas de préfixe d'appartement dans les entités
+        const appartPrefix = apartment === 'carmes' ? '' : apartment + '_';
+        const appartName = apartment === 'carmes' ? '' : apartment;
+
         // Effectuer les remplacements pour cette pièce
         const patterns = [
-          { from: '{appart}', to: apartment },
+          { from: '{appart}_', to: appartPrefix },  // Gérer le underscore d'abord
+          { from: '{appart}', to: appartName },     // Puis les références sans underscore
           { from: '{room_code}', to: room.code },
           { from: '{room_name}', to: tabTitle },  // Utiliser le titre avec emoji pour l'onglet
           { from: '{room_shortname}', to: shortname }
@@ -432,9 +437,14 @@
       let content = templateContent;
       const replacements = [];
 
+      // Pour carmes, pas de préfixe d'appartement dans les entités
+      const appartPrefix = currentValues.appart === 'carmes' ? '' : currentValues.appart + '_';
+      const appartName = currentValues.appart === 'carmes' ? '' : currentValues.appart;
+
       // Effectuer les remplacements
       const patterns = [
-        { from: '{appart}', to: currentValues.appart },
+        { from: '{appart}_', to: appartPrefix },  // Gérer le underscore d'abord
+        { from: '{appart}', to: appartName },     // Puis les références sans underscore
         { from: '{room_code}', to: currentValues.room_code },
         { from: '{room_name}', to: currentValues.room_name },
         { from: '{room_shortname}', to: currentValues.room_shortname }
