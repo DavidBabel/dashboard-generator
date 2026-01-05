@@ -89,14 +89,14 @@
         { name: 'Chambre Balcon', code: 'chambre_balcon' },
         { name: 'Chambre Grande Gauche', code: 'chambre_grande_gauche' },
         { name: 'Chambre Grande Droite', code: 'chambre_grande_droite' },
-        { name: 'Salle de bain', code: 'salle_de_bain' }
+        { name: 'Salle de bains', code: 'salle_de_bains' }
       ],
       carmes: [
         { name: 'Chambre', code: 'chambre' },
         { name: 'Salon', code: 'salon' },
         { name: 'Bureau', code: 'bureau' },
         { name: 'Cuisine', code: 'cuisine' },
-        { name: 'Salle de bain', code: 'salle_de_bain' }
+        { name: 'Salle de bains', code: 'salle_de_bains' }
       ]
     };
 
@@ -128,7 +128,7 @@
       // Cas spéciaux sans "chambre"
       if (roomCode === 'salon' || roomCode.includes('salon')) {
         emoji = '🛋️';
-      } else if (roomCode === 'salle_de_bain' || roomCode.includes('salle_de_bain')) {
+      } else if (roomCode === 'salle_de_bains' || roomCode.includes('salle_de_bains')) {
         emoji = '🛁';
       } else if (roomCode === 'bureau' || roomCode.includes('bureau')) {
         emoji = '💼';
@@ -145,7 +145,7 @@
         return 'mdi:bed';
       } else if (roomCode === 'salon' || roomCode.includes('salon')) {
         return 'mdi:sofa';
-      } else if (roomCode === 'salle_de_bain' || roomCode.includes('salle_de_bain')) {
+      } else if (roomCode === 'salle_de_bains' || roomCode.includes('salle_de_bains')) {
         return 'mdi:shower';
       } else if (roomCode === 'bureau' || roomCode.includes('bureau')) {
         return 'mdi:desk';
