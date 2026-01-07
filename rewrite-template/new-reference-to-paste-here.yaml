@@ -148,6 +148,12 @@ sections:
             name: Temperature exterieure
           - entity: input_select.automation_vt_engel_chambre_salon_events
             name: 🤖 Automation
+          - entity: sensor.temperature_engel_chambre_salon_temperature
+            name:
+              - type: text
+                text: 🌡️
+              - type: text
+                text: Capteur
         grid_options:
           rows: 8
           columns: full

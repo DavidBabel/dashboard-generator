@@ -148,6 +148,12 @@ sections:
             name: Temperature exterieure
           - entity: input_select.automation_vt_{appart}_{room_code}_events
             name: 🤖 Automation
+          - entity: sensor.temperature_{appart}_{room_code}_temperature
+            name:
+              - type: text
+                text: 🌡️
+              - type: text
+                text: Capteur
         grid_options:
           rows: 8
           columns: full
@@ -224,4 +230,4 @@ type: sections
 icon: ""
 cards: []
 max_columns: 4
-path: {room_code}
+path: { room_code }
