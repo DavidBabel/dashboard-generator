@@ -148,6 +148,25 @@ sections:
             name: Temperature exterieure
           - entity: input_select.automation_vt_engel_chambre_salon_events
             name: 🤖 Automation
+          - entity: binary_sensor.chauffage_vt_chambre_salon_etat_de_presence
+            name:
+              - type: text
+                text: Présent
+              - type: area
+              - type: text
+                text: 🔉
+          - entity: binary_sensor.presence_chambre_salon_temporisee
+            name:
+              - type: text
+                text: Présence lissée
+              - type: text
+                text: 🚶‍♂️
+          - entity: binary_sensor.chauffage_vt_chambre_salon_etat_de_la_fenetre
+            name:
+              - type: text
+                text: Fenêtre
+              - type: text
+                text: 🪟
         grid_options:
           rows: 8
           columns: full

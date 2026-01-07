@@ -154,12 +154,6 @@ sections:
                 text: Présent
               - type: area
               - type: text
-                text: 🔉
-          - entity: binary_sensor.presence_{room_code}_temporisee
-            name:
-              - type: text
-                text: Présence lissée
-              - type: text
                 text: 🚶‍♂️
           - entity: binary_sensor.chauffage_vt_{room_code}_etat_de_la_fenetre
             name:
@@ -243,4 +237,4 @@ type: sections
 icon: ""
 cards: []
 max_columns: 4
-path: {room_code}
+path: { room_code }
