@@ -30,9 +30,11 @@ update_blueprints() {
         [ -e "$FILE" ] || continue
         FILE_NAME=$(basename "$FILE")
         RELATIVE_PATH=${FILE#$LOCAL_BASE/}
-        RAW_URL="https://raw.githubusercontent.com/$GITHUB_USER/$GITHUB_REPO/$GITHUB_BRANCH/blueprints/automation/DavidBabel/$RELATIVE_PATH"
+        # Ajout d'un timestamp pour éviter le cache
+        TIMESTAMP=$(date +%s)
+        RAW_URL="https://raw.githubusercontent.com/$GITHUB_USER/$GITHUB_REPO/$GITHUB_BRANCH/blueprints/automation/DavidBabel/$RELATIVE_PATH?nocache=$TIMESTAMP"
         echo "🔄 Mise à jour de $FILE_NAME depuis $RAW_URL"
-        curl -sSL "$RAW_URL" -o "$FILE"
+        curl -sSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" "$RAW_URL" -o "$FILE"
         if [ $? -eq 0 ]; then
             echo "✅ $FILE_NAME mis à jour avec succès"
         else
@@ -55,6 +57,8 @@ HA_URL="http://localhost:8123"  # ou https://<ip>:8123 si externe
 echo "🔄 Rechargement des blueprints via l'API HA (Romains)..."
 curl -s -X POST -H "Authorization: Bearer $HA_TOKEN_ROMAINS" \
      -H "Content-Type: application/json" \
+     -H "Cache-Control: no-cache" \
+     -H "Pragma: no-cache" \
      "http://192.168.1.56:8123/api/services/homeassistant/reload_all"
 if [ $? -eq 0 ]; then
     echo "✅ Blueprints rechargés avec succès (Romains)"
@@ -65,6 +69,8 @@ fi
 echo "🔄 Rechargement des blueprints via l'API HA (Engel)..."
 curl -s -X POST -H "Authorization: Bearer $HA_TOKEN_ENGEL" \
      -H "Content-Type: application/json" \
+     -H "Cache-Control: no-cache" \
+     -H "Pragma: no-cache" \
      "http://192.168.1.57:8123/api/services/homeassistant/reload_all"
 if [ $? -eq 0 ]; then
     echo "✅ Blueprints rechargés avec succès (Engel)"
