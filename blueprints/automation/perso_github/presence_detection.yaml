@@ -1,0 +1,111 @@
+blueprint:
+  name: "VT – Detection de beacon abandonné dans l'appartement"
+  description: "Bascule en Frost si le beacon est immobile. Analyse via Ratio Stats."
+  domain: automation
+
+  input:
+    ratio_sensor:
+      name: Capteur de statistique (ratio présence)
+      description: "Filtre : Affiche uniquement les capteurs de l'intégration 'Statistics'."
+      selector:
+        entity:
+          domain: sensor
+          integration: statistics
+
+    input_seuil_percent:
+      name: Seuil de présence (%)
+      default: input_number.pourcentage_de_presence_beacon_abandonne
+      selector:
+        entity:
+          domain: input_number
+
+    target_thermostat:
+      name: Versatile Thermostat
+      selector:
+        entity:
+          domain: climate
+          integration: versatile_thermostat
+
+    site_name:
+      name: Nom du Site
+      selector:
+        select:
+          options:
+            - Romains
+            - Engel
+
+    dashboard_url:
+      name: URL du Dashboard (Chambre)
+      default: "/dashboard-engelbreit/chambre-salon"
+      selector:
+        select:
+          options:
+            - label: "Romains - Chambre Cuisine"
+              value: "/dashboard-romains/chambre-cuisine"
+            - label: "Romains - Chambre Cellier"
+              value: "/dashboard-romains/chambre-cellier"
+            - label: "Romains - Chambre Balcon"
+              value: "/dashboard-romains/chambre-balcon"
+            - label: "Romains - Chambre Grande Gauche"
+              value: "/dashboard-romains/chambre-grande-gauche"
+            - label: "Romains - Chambre Grande Droite"
+              value: "/dashboard-romains/chambre-grande-droite"
+            - label: "Engel - Chambre Salon"
+              value: "/dashboard-engelbreit/chambre-salon"
+            - label: "Engel - Chambre Sud"
+              value: "/dashboard-engelbreit/chambre-sud"
+            - label: "Engel - Chambre Ouest"
+              value: "/dashboard-engelbreit/chambre-ouest"
+            - label: "Engel - Chambre Nord"
+              value: "/dashboard-engelbreit/chambre-nord"
+          custom_value: true
+
+# Variables pour sécuriser les templates Jinja
+variables:
+  ratio_ent: !input ratio_sensor
+  seuil_ent: !input input_seuil_percent
+  thermostat_ent: !input target_thermostat
+  site: !input site_name
+  url_val: !input dashboard_url
+
+trigger:
+  - platform: time_pattern
+    hours: "/3"
+
+condition:
+  # 1. Capteur de stats valide
+  - condition: template
+    value_template: "{{ states(ratio_ent) not in ['unknown', 'unavailable', ''] }}"
+
+  # 2. Ratio >= seuil
+  - condition: template
+    value_template: >
+      {% set ratio = states(ratio_ent) | float(0) %}
+      {% set seuil = states(seuil_ent) | float(95) / 100 %}
+      {{ ratio >= seuil }}
+
+  # 3. Thermostat pas déjà en hors-gel
+  - condition: template
+    value_template: >
+      {{ state_attr(thermostat_ent, 'preset_mode') != 'frost' }}
+
+action:
+  - service: climate.set_preset_mode
+    target:
+      entity_id: !input target_thermostat
+    data:
+      preset_mode: frost
+
+  - service: notify.mobile_app_david_needs_internet
+    data:
+      title: "🔥 Présence prolongée {{ site }}"
+      message: >
+        {% set path = url_val[1:] if url_val.startswith('/') else url_val %}
+        {% set room = (path.split('/')[-1]) | replace('-', ' ') | replace('_', ' ') %}
+        Présence détectée à {{ (states(ratio_ent)|float * 100)|round(1) }} % dans {{ room }}.
+      data:
+        notification_icon: mdi:home-thermometer
+        icon: mdi:snowflake-alert
+        color: "#FFA500"
+        clickAction: !input dashboard_url
+        url: !input dashboard_url

@@ -1,0 +1,108 @@
+blueprint:
+  name: 🔔 Check Batteries Domotique (Multi-appartements)
+  description: >
+    Vérifie quotidiennement les batteries domotiques et notifie si certaines
+    passent sous un seuil configurable via une entité input_number.
+  domain: automation
+  input:
+    appartement:
+      name: Appartement
+      description: Sélectionne l'appartement concerné
+      default: "🟧 Engel"
+      selector:
+        select:
+          options:
+            - "🟧 Engel"
+            - "🟩 Romains"
+            - "🟦 Carmes"
+
+    batteries:
+      name: Capteurs de batteries
+      description: Liste des entités batterie à surveiller
+      default:
+        - sensor.chauffage_engel_chambre_salon_battery
+        - sensor.bouton_engel_chambre_salon_batterie
+        - sensor.chauffage_engel_chambre_sud_battery
+        - sensor.bouton_engel_chambre_sud_batterie
+        - sensor.chauffage_engel_chambre_ouest_battery
+        - sensor.bouton_engel_chambre_ouest_batterie
+        - sensor.chauffage_engel_chambre_nord_battery
+        - sensor.bouton_engel_chambre_nord_batterie
+        - sensor.temperature_engel_salle_de_bains_battery
+        - sensor.chauffage_engel_salon_battery
+        - sensor.temperature_engel_communs_battery
+        - sensor.chauffage_romains_chambre_cuisine_battery
+        - sensor.bouton_romains_chambre_cuisine_batterie
+        - sensor.chauffage_romains_chambre_cellier_battery
+        - sensor.bouton_romains_chambre_cellier_batterie
+        - sensor.chauffage_romains_chambre_balcon_battery
+        - sensor.bouton_romains_chambre_balcon_batterie
+        - sensor.chauffage_romains_chambre_grande_gauche_battery
+        - sensor.bouton_romains_chambre_grande_gauche_batterie
+        - sensor.chauffage_romains_chambre_grande_droite_battery
+        - sensor.bouton_romains_chambre_grande_droite_batterie
+        - sensor.chauffage_romains_salle_de_bains_battery
+        - sensor.temperature_romains_salle_de_bains_battery
+        - sensor.temperature_romains_communs_battery
+        - sensor.detecteur_fumee_romains_cellier_battery
+      selector:
+        entity:
+          domain: sensor
+          multiple: true
+
+    seuil_entite:
+      name: Entité seuil d’alerte
+      description: Entité input_number définissant le seuil batterie
+      default: input_number.seuil_alerte_batterie
+      selector:
+        entity:
+          domain: input_number
+
+    notifier:
+      name: Service de notification
+      description: Service notify à utiliser
+      default: notify.mobile_app_david_needs_internet
+      selector:
+        text: {}
+
+trigger:
+  - platform: time
+    at: "12:30:00"
+
+mode: single
+
+action:
+  - variables:
+      seuil_alerte: "{{ states(seuil_entite) | float(80) }}"
+      prefix_appartement: "{{ appartement.split(' ')[1] | lower }}"
+
+  - variables:
+      liste_simplifiee: |-
+        {% set ns = namespace(items=[]) %}
+        {% for entity in batteries %}
+          {% if prefix_appartement in entity %}
+            {% set bat = states(entity) | float(100) %}
+            {% if bat < seuil_alerte %}
+              {% set name = state_attr(entity, 'friendly_name')
+                | regex_replace('(?i)batterie|battery|engel|romains|carmes', '')
+                | regex_replace('  +', ' ')
+                | trim %}
+              {% set ns.items = ns.items + [ name ~ " (" ~ bat | int ~ "%)" ] %}
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.items | join('\n') }}
+
+  - condition: template
+    value_template: "{{ liste_simplifiee | length > 0 }}"
+
+  - service: "{{ notifier }}"
+    data:
+      title: "🔋 Piles à changer {{ appartement }}"
+      message: "{{ liste_simplifiee }}"
+      data:
+        notification_icon: mdi:battery-alert
+        icon: mdi:battery-alert
+        color: "#FFA500"
+        clickAction: /batteries-check/0
+        url: /batteries-check/0

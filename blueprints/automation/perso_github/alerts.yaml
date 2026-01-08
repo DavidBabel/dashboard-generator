@@ -1,0 +1,132 @@
+blueprint:
+  name: "Urgence Maison – Multi-capteurs (Eau / Fumée / Autre)"
+  description: >
+    Alerte critique avec rappel périodique et notification de retour à la normale.
+    Compatible iOS (critique) et Android. Anti-spam intégré.
+  domain: automation
+  input:
+    capteurs:
+      name: Capteurs de danger
+      description: Sélectionne un ou plusieurs capteurs (eau, fumée, gaz, etc.)
+      default:
+        - binary_sensor.detecteur_eau_engel_chauffe_eau_water_leak
+        - binary_sensor.detecteur_eau_engel_cuisine_water_leak
+        - binary_sensor.detecteur_eau_engel_salle_de_bains_water_leak
+        - binary_sensor.detecteur_eau_romains_salle_de_bains_water_leak
+        - binary_sensor.detecteur_eau_romains_cuisine_water_leak
+        - binary_sensor.detecteur_eau_romains_douche_water_leak
+        - binary_sensor.detecteur_fumee_engel_entree_smoke
+        - binary_sensor.detecteur_fumee_romains_cellier_smoke
+      selector:
+        entity:
+          domain: binary_sensor
+          multiple: true
+
+    delai_rappel:
+      name: Intervalle de rappel
+      description: Temps entre deux notifications tant que le danger persiste
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 60
+          unit_of_measurement: minutes
+
+    notify_device:
+      name: Device à notifier
+      description: >
+        Le device doit utiliser l'application mobile officielle Home Assistant.
+      default: e9fc0ee7906bd551b20c73c968d093c0
+      selector:
+        device:
+          filter:
+            integration: mobile_app
+
+mode: parallel
+max: 10
+
+trigger:
+  - platform: state
+    entity_id: !input capteurs
+    to: "on"
+    id: alerte
+
+  - platform: state
+    entity_id: !input capteurs
+    to: "off"
+    id: retour
+
+action:
+  - variables:
+      capteur: "{{ trigger.entity_id }}"
+      nom: "{{ state_attr(trigger.entity_id, 'friendly_name') }}"
+      rappel: !input delai_rappel
+
+      notify_device: !input notify_device
+      notify_service: >
+        notify.mobile_app_{{ device_attr(notify_device, 'name')
+          | lower
+          | replace(' ', '_')
+          | replace('-', '_') }}
+
+  - choose:
+      # =========================
+      # 🚨 ALERTE ACTIVE
+      # =========================
+      - conditions:
+          - condition: trigger
+            id: alerte
+        sequence:
+          - repeat:
+              while:
+                - condition: template
+                  value_template: "{{ is_state(capteur, 'on') }}"
+              sequence:
+                - service: "{{ notify_service }}"
+                  data:
+                    title: "🚨 ALERTE MAISON"
+                    message: >
+                      {% if 'smoke' in capteur %}
+                      🔥 FUMÉE DÉTECTÉE
+                      {% elif 'water' in capteur or 'leak' in capteur %}
+                      💧 FUITE D’EAU DÉTECTÉE
+                      {% else %}
+                      ⚠️ DANGER DÉTECTÉ
+                      {% endif %}
+                      📍 {{ nom }}
+                    data:
+                      tag: "urgence_{{ capteur }}"
+                      notification_icon: mdi:alert
+                      push:
+                        sound:
+                          name: default
+                          critical: 1
+                          volume: 1.0
+                      ttl: 0
+                      priority: high
+
+                - delay:
+                    minutes: "{{ rappel | int }}"
+
+      # =========================
+      # ✅ RETOUR À LA NORMALE
+      # =========================
+      - conditions:
+          - condition: trigger
+            id: retour
+        sequence:
+          - service: "{{ notify_service }}"
+            data:
+              title: "✅ Situation rétablie"
+              message: >
+                {% if 'smoke' in capteur %}
+                🔥 Fin de l’alerte fumée
+                {% elif 'water' in capteur or 'leak' in capteur %}
+                💧 Fin de l’alerte fuite d’eau
+                {% else %}
+                ⚠️ Fin de l’alerte
+                {% endif %}
+                📍 {{ nom }}
+              data:
+                tag: "urgence_{{ capteur }}"
+                notification_icon: mdi:check-circle

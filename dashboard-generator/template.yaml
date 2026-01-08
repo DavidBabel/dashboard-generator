@@ -93,6 +93,7 @@ sections:
           - entity: sensor.temperature_{appart}_{room_code}
             name: Temp. Chambre
           - sensor.strasbourg_temperature
+          - entity: sensor.temperature_{room_code}_temperature
         stat_types:
           - mean
         hide_legend: false
@@ -151,22 +152,21 @@ sections:
           - entity: binary_sensor.chauffage_vt_{room_code}_etat_de_presence
             name:
               - type: text
-                text: Présent
-              - type: area
+                text: Présence
+              - type: text
+                text: lissée 🚶‍♂️
+          - entity: binary_sensor.presence_{room_code}_presence
+            name:
+              - type: device
               - type: text
                 text: 🔉
-          - entity: binary_sensor.presence_{room_code}_temporisee
-            name:
-              - type: text
-                text: Présence lissée
-              - type: text
-                text: 🚶‍♂️
           - entity: binary_sensor.chauffage_vt_{room_code}_etat_de_la_fenetre
             name:
               - type: text
                 text: Fenêtre
               - type: text
                 text: 🪟
+          - entity: sensor.temperature_{room_code}_temperature
         grid_options:
           rows: 8
           columns: full
@@ -243,4 +243,4 @@ type: sections
 icon: ""
 cards: []
 max_columns: 4
-path: {room_code}
+path: "{room_code}"

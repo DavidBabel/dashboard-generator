@@ -1,0 +1,148 @@
+blueprint:
+  name: "VT Reset Automatique Optimisé & Instrumenté (Stateless)"
+  description: >
+    Synchronise le VT avec la vanne physique, respecte les réglages manuels,
+    protège contre valeurs invalides et micro-ajustements,
+    puis force un recalcul du planning après stabilisation.
+  domain: automation
+  input:
+    valve_entity:
+      name: Vanne Physique
+      selector:
+        entity:
+          domain: climate
+
+    vt_entity:
+      name: Versatile Thermostat (VT)
+      selector:
+        entity:
+          domain: climate
+          integration: versatile_thermostat
+
+    event_entity:
+      name: Automation Events (input_select)
+      selector:
+        entity:
+          domain: input_select
+
+    timer_entity:
+      name: Délai avant reset (minutes)
+      default: input_number.timer_reset_chauffage
+      selector:
+        entity:
+          domain: input_number
+
+    hysteresis:
+      name: Hystérésis minimale (°C)
+      default: 0.4
+      selector:
+        number:
+          min: 0
+          max: 5
+          step: 0.1
+
+mode: restart
+max_exceeded: silent
+
+# Utilisation des variables après le trigger pour une stabilité maximale
+variables:
+  valve: !input valve_entity
+  vt: !input vt_entity
+  events: !input event_entity
+  timer: !input timer_entity
+  hysteresis_val: !input hysteresis
+
+trigger:
+  - platform: state
+    entity_id: !input valve_entity
+    attribute: temperature
+    for:
+      seconds: 10
+
+action:
+  # On définit les températures en variables locales d'action pour éviter les erreurs de calcul au démarrage
+  - variables:
+      valve_temp: "{{ state_attr(valve, 'temperature') | float(0) }}"
+      vt_temp: "{{ state_attr(vt, 'temperature') | float(0) }}"
+
+  # ▶️ RUN
+  - action: input_select.select_option
+    target:
+      entity_id: "{{ events }}"
+    data:
+      option: run
+
+  # ❌ Valeur invalide
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ valve_temp == 0 }}"
+        sequence:
+          - action: input_select.select_option
+            target:
+              entity_id: "{{ events }}"
+            data:
+              option: invalid_value
+          - stop: "Température vanne invalide"
+
+  # ✋ Delta inférieur à l’hystérésis
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: >
+              {{ (valve_temp - vt_temp) | abs <= (hysteresis_val | float) }}
+        sequence:
+          - action: input_select.select_option
+            target:
+              entity_id: "{{ events }}"
+            data:
+              option: aborted_small_delta
+          - stop: "Variation trop faible"
+
+  # 🔄 Synchronisation VT
+  - action: climate.set_temperature
+    target:
+      entity_id: "{{ vt }}"
+    data:
+      temperature: "{{ valve_temp }}"
+
+  - action: input_select.select_option
+    target:
+      entity_id: "{{ events }}"
+    data:
+      option: synced
+
+  # ⏳ Attente avant reset
+  - action: input_select.select_option
+    target:
+      entity_id: "{{ events }}"
+    data:
+      option: waiting
+
+  - delay:
+      minutes: "{{ states(timer) | int(0) }}"
+
+  # 🧠 Vérification finale
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: >
+              {{ state_attr(valve, 'temperature') | float(0) != valve_temp }}
+        sequence:
+          - action: input_select.select_option
+            target:
+              entity_id: "{{ events }}"
+            data:
+              option: aborted_manual
+          - stop: "Réglage manuel toujours actif"
+
+  # 🔁 Reset VT
+  - action: input_select.select_option
+    target:
+      entity_id: "{{ events }}"
+    data:
+      option: reset
+
+  - action: versatile_thermostat.recalculate
+    target:
+      entity_id: "{{ vt }}"
