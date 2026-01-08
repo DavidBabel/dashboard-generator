@@ -18,6 +18,8 @@ mkdir -p "$(dirname "$LOG_FILE")"
 # Redirection globale de toutes les sorties vers le fichier de log
 exec >> "$LOG_FILE" 2>&1
 
+source /config/scripts/token.sh
+
 echo "----- $(date) -----"
 echo "Début de la mise à jour des blueprints"
 

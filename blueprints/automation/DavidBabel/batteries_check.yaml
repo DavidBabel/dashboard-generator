@@ -1,5 +1,5 @@
 blueprint:
-  name: "NEW 4 🔔 Check Batteries Domotique (Multi-appartements)"
+  name: "NEW 5 🔔 Check Batteries Domotique (Multi-appartements)"
   description: >
     Vérifie quotidiennement les batteries domotiques et notifie si certaines
     passent sous un seuil configurable via une entité input_number.
