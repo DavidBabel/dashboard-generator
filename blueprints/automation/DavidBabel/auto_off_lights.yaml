@@ -1,6 +1,7 @@
 blueprint:
   name: "💡 Extinction Auto Lumières (Présence Temporisée)"
   description: >
+    TODO revoir entierement ce scenario
     Extinction automatique des lumières basée sur un capteur de présence temporisée.
     Robuste après reboot, respecte l'allumage manuel récent et conserve l'instrumentation et les logs.
   domain: automation

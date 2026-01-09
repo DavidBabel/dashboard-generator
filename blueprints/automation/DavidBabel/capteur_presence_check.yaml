@@ -1,0 +1,132 @@
+blueprint:
+  name: "❤️ Health Check – Surveillance Détecteurs de Présence Aqara"
+  description: >
+    Surveille vos détecteurs de présence Aqara et envoie une alerte critique
+    lorsqu'un capteur devient inaccessible (pile faible, déconnexion, etc.).
+    Notification de retour à la normale incluse.
+  domain: automation
+  input:
+    capteurs:
+      name: Détecteurs de présence
+      description: Sélectionnez les détecteurs de présence Aqara à surveiller
+      default:
+        - binary_sensor.detecteur_romains_communs_presence
+      selector:
+        entity:
+          domain: binary_sensor
+          multiple: true
+
+    delai_avant_alerte:
+      name: Délai avant alerte
+      description: Temps d'attente avant de déclencher l'alerte d'inaccessibilité (évite les fausses alertes)
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 30
+          unit_of_measurement: minutes
+
+    delai_rappel:
+      name: Intervalle de rappel
+      description: Temps entre deux notifications tant que le capteur est hors ligne
+      default: 30
+      selector:
+        number:
+          min: 5
+          max: 180
+          unit_of_measurement: minutes
+
+    notify_device:
+      name: Device à notifier
+      description: Le device doit utiliser l'application mobile officielle Home Assistant.
+      selector:
+        device:
+          filter:
+            integration: mobile_app
+
+mode: parallel
+max: 10
+
+trigger:
+  - platform: state
+    entity_id: !input capteurs
+    to: "unavailable"
+    for:
+      minutes: !input delai_avant_alerte
+    id: alerte
+
+  - platform: state
+    entity_id: !input capteurs
+    from: "unavailable"
+    id: retour
+
+variables:
+  capteur: "{{ trigger.entity_id }}"
+  nom: "{{ state_attr(trigger.entity_id, 'friendly_name') }}"
+  rappel: !input delai_rappel
+  notify_device: !input notify_device
+  notify_service: >
+    notify.mobile_app_{{ device_attr(notify_device, 'name')
+      | lower
+      | replace(' ', '_')
+      | replace('-', '_') }}
+
+action:
+  - choose:
+      # =========================
+      # 🚨 CAPTEUR INACCESSIBLE
+      # =========================
+      - conditions:
+          - condition: trigger
+            id: alerte
+        sequence:
+          - repeat:
+              while:
+                - condition: template
+                  value_template: "{{ states(capteur) == 'unavailable' }}"
+              sequence:
+                - service: "{{ notify_service }}"
+                  data:
+                    title: "🚨 CAPTEUR INACCESSIBLE"
+                    message: >
+                      ⚠️ Le détecteur de présence est hors ligne !
+                      📍 {{ nom }}
+
+                      Causes possibles :
+                      • Pile faible ou déchargée
+                      • Capteur débranché ou tombé
+                      • Problème de connexion Zigbee
+                    data:
+                      tag: "presence_check_{{ capteur }}"
+                      notification_icon: mdi:motion-sensor-off
+                      push:
+                        sound:
+                          name: default
+                          critical: 1
+                          volume: 1.0
+                      ttl: 0
+                      priority: high
+                      clickAction: /presence-salon/
+                      url: /presence-salon/
+
+                - delay:
+                    minutes: "{{ rappel | int }}"
+
+      # =========================
+      # ✅ RETOUR EN LIGNE
+      # =========================
+      - conditions:
+          - condition: trigger
+            id: retour
+        sequence:
+          - service: "{{ notify_service }}"
+            data:
+              title: "✅ Capteur rétabli"
+              message: >
+                🟢 Le détecteur de présence est de nouveau en ligne.
+                📍 {{ nom }}
+              data:
+                tag: "presence_check_{{ capteur }}"
+                notification_icon: mdi:motion-sensor
+                clickAction: /presence-salon/
+                url: /presence-salon/
