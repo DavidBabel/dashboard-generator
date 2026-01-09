@@ -50,9 +50,6 @@ done
 
 echo "✅ Tous les blueprints ont été mis à jour."
 
-# Adresse de Home Assistant
-HA_URL="http://localhost:8123"  # ou https://<ip>:8123 si externe
-
 # Rechargement des blueprints d'automation
 echo "🔄 Rechargement des blueprints via l'API HA (Romains)..."
 curl -s -X POST -H "Authorization: Bearer $HA_TOKEN_ROMAINS" \

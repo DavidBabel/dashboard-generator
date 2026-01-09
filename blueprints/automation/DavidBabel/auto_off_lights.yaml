@@ -49,6 +49,13 @@ blueprint:
           min: 0
           max: 3600
           unit_of_measurement: secondes
+    auto_off_counter:
+      name: Compteur d'extinctions automatiques
+      description: Entité counter qui compte le nombre de fois où l'automation a éteint les lumières
+      default: counter.salon_lights_auto_off_count
+      selector:
+        entity:
+          domain: counter
     notification_service:
       name: Service de notification
       description: Service à utiliser pour les notifications de reboot
@@ -135,6 +142,9 @@ actions:
       entity_id:
         - !input light_switch_1
         - !input light_switch_2
+  - action: counter.increment
+    target:
+      entity_id: !input auto_off_counter
   - action: input_select.select_option
     target:
       entity_id: !input automation_events_tracker

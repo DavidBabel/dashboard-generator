@@ -1,0 +1,114 @@
+blueprint:
+  name: "🏥 Health Check – Surveillance Serveurs (Scrape)"
+  description: >
+    Surveille vos capteurs de santé (Scrape).
+    Envoie une notification critique si l'état n'est plus "OK" avec rappel périodique.
+  domain: automation
+  input:
+    capteurs:
+      name: Capteurs de Health check
+      description: Sélectionne les entités Scrape (doivent renvoyer OK ou KO)
+      default:
+        - sensor.statut_systeme_ha_romains
+        - sensor.statut_systeme_ha_engel
+      selector:
+        entity:
+          domain: sensor
+          multiple: true
+
+    delai_rappel:
+      name: Intervalle de rappel
+      description: Temps entre deux notifications tant que le serveur est hors-ligne.
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 120
+          unit_of_measurement: minutes
+
+    notify_device:
+      name: Device à notifier
+      description: Le device doit utiliser l'application mobile officielle Home Assistant.
+      selector:
+        device:
+          filter:
+            integration: mobile_app
+
+mode: parallel
+max: 10
+
+trigger:
+  - platform: state
+    entity_id: !input capteurs
+    id: alerte
+    # Déclenche si l'état change et n'est plus "OK"
+    not_to: "OK"
+
+  - platform: state
+    entity_id: !input capteurs
+    to: "OK"
+    id: retour
+
+action:
+  - variables:
+      capteur: "{{ trigger.entity_id }}"
+      nom: "{{ state_attr(trigger.entity_id, 'friendly_name') }}"
+      rappel: !input delai_rappel
+      notify_device: !input notify_device
+      # Construction dynamique du service de notification
+      notify_service: >
+        notify.mobile_app_{{ device_attr(notify_device, 'name')
+          | lower
+          | replace(' ', '_')
+          | replace('-', '_') }}
+
+  - choose:
+      # =========================
+      # 🚨 SERVEUR OFFLINE (KO)
+      # =========================
+      - conditions:
+          - condition: trigger
+            id: alerte
+        sequence:
+          - repeat:
+              while:
+                - condition: template
+                  value_template: "{{ states(capteur) != 'OK' }}"
+              sequence:
+                - service: "{{ notify_service }}"
+                  data:
+                    title: "🚨 SERVEUR EN PANNE"
+                    message: >
+                      ⚠️ L'instance Home Assistant est injoignable !
+                      📍 {{ nom }}
+                      Statut actuel : {{ states(capteur) }}
+                    data:
+                      tag: "health_{{ capteur }}"
+                      notification_icon: mdi:server-off
+                      push:
+                        sound:
+                          name: default
+                          critical: 1
+                          volume: 1.0
+                      ttl: 0
+                      priority: high
+
+                - delay:
+                    minutes: "{{ rappel | int }}"
+
+      # =========================
+      # ✅ RETOUR EN LIGNE (OK)
+      # =========================
+      - conditions:
+          - condition: trigger
+            id: retour
+        sequence:
+          - service: "{{ notify_service }}"
+            data:
+              title: "✅ Serveur rétabli"
+              message: >
+                🟢 L'instance est de nouveau en ligne.
+                📍 {{ nom }}
+              data:
+                tag: "health_{{ capteur }}"
+                notification_icon: mdi:server-network
