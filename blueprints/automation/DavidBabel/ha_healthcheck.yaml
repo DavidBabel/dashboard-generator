@@ -111,3 +111,5 @@ action:
               data:
                 tag: "health_{{ capteur }}"
                 notification_icon: mdi:server-network
+                clickAction: /dashboard-locatif/
+                url: /dashboard-locatif/
