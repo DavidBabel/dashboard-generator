@@ -167,5 +167,10 @@ actions:
               message: >
                 Les lumières étaient allumées au redémarrage et ont été
                 éteintes automatiquement.
+
 mode: restart
 max_exceeded: silent
+
+variables:
+  grace_period_seconds: !input manual_on_grace_period
+  last_manual_datetime: !input last_manual_on_datetime

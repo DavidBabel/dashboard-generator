@@ -73,18 +73,32 @@ trigger:
 
 mode: single
 
+variables:
+  seuil_alerte: "{{ states(seuil_entite) | float(80) }}"
+  prefix_appartement: "{{ appartement.split(' ')[1] | lower }}"
+  notify_device: !input notifier
+  notify_service: >
+    notify.mobile_app_{{ device_attr(notify_device, 'name')
+      | lower
+      | replace(' ', '_')
+      | replace('-', '_') }}
+  liste_simplifiee: |-
+    {% set ns = namespace(items=[]) %}
+    {% for entity in batteries %}
+      {% if prefix_appartement in entity %}
+        {% set bat = states(entity) | float(100) %}
+        {% if bat < seuil_alerte %}
+          {% set name = state_attr(entity, 'friendly_name')
+            | regex_replace('(?i)batterie|battery|engel|romains|carmes', '')
+            | regex_replace('  +', ' ')
+            | trim %}
+          {% set ns.items = ns.items + [ name ~ " (" ~ bat | int ~ "%)" ] %}
+        {% endif %}
+      {% endif %}
+    {% endfor %}
+    {{ ns.items | join('\n') }}
+
 action:
-  - variables:
-      seuil_alerte: "{{ states(seuil_entite) | float(80) }}"
-      prefix_appartement: "{{ appartement.split(' ')[1] | lower }}"
-
-      notify_device: !input notifier
-      notify_service: >
-        notify.mobile_app_{{ device_attr(notify_device, 'name')
-          | lower
-          | replace(' ', '_')
-          | replace('-', '_') }}
-
   - variables:
       liste_simplifiee: |-
         {% set ns = namespace(items=[]) %}

@@ -49,19 +49,18 @@ trigger:
     to: "OK"
     id: retour
 
-action:
-  - variables:
-      capteur: "{{ trigger.entity_id }}"
-      nom: "{{ state_attr(trigger.entity_id, 'friendly_name') }}"
-      rappel: !input delai_rappel
-      notify_device: !input notify_device
-      # Construction dynamique du service de notification
-      notify_service: >
-        notify.mobile_app_{{ device_attr(notify_device, 'name')
-          | lower
-          | replace(' ', '_')
-          | replace('-', '_') }}
+variables:
+  capteur: "{{ trigger.entity_id }}"
+  nom: "{{ state_attr(trigger.entity_id, 'friendly_name') }}"
+  rappel: !input delai_rappel
+  notify_device: !input notify_device
+  notify_service: >
+    notify.mobile_app_{{ device_attr(notify_device, 'name')
+      | lower
+      | replace(' ', '_')
+      | replace('-', '_') }}
 
+action:
   - choose:
       # =========================
       # 🚨 SERVEUR OFFLINE (KO)

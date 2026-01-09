@@ -1,0 +1,173 @@
+blueprint:
+  name: Surveillance Débranchement Vanne Danfoss Ally
+  description: >
+    Détecte et alerte lorsqu'une vanne thermostatique Danfoss Ally a été débranchée,
+    dévissée du radiateur ou devient inaccessible.
+
+    La vanne Danfoss Ally possède un capteur interne `mounted_mode_active` qui indique
+    si elle est correctement installée sur le radiateur. Ce blueprint surveille cet état
+    et vous prévient en cas de problème.
+  domain: automation
+  author: DavidBabel
+  source_url: https://github.com/DavidBabel/ha/blob/master/blueprints/automation/DavidBabel/danfoss_ally_unplug.yaml
+
+  input:
+    vanne_entity:
+      name: Vanne Danfoss Ally
+      description: >
+        Sélectionnez l'entité binary_sensor correspondant au mode de montage de votre vanne
+        (généralement nommée binary_sensor.xxx_mounted_mode_active ou binary_sensor.xxx_mounted_mode_control).
+        Si vous ne trouvez pas cette entité, vérifiez dans les outils de développement de Home Assistant.
+      selector:
+        entity:
+          domain: binary_sensor
+
+    vanne_name:
+      name: Nom de la vanne
+      description: Nom de la pièce ou du radiateur pour personnaliser les notifications (ex. "Salon", "Chambre parentale")
+      default: "la vanne"
+      selector:
+        text:
+
+    notify_device:
+      name: Device à notifier
+      description: >
+        Le device doit utiliser l'application mobile officielle Home Assistant.
+        Les notifications seront envoyées en mode critique (iOS) avec priorité haute.
+      selector:
+        device:
+          filter:
+            integration: mobile_app
+
+    check_unavailable:
+      name: Vérifier l'inaccessibilité
+      description: >
+        Activer une alerte supplémentaire si la vanne devient inaccessible (hors ligne).
+        Utile pour détecter les problèmes de pile ou de connexion Zigbee.
+      default: true
+      selector:
+        boolean:
+
+    unavailable_delay:
+      name: Délai avant alerte d'inaccessibilité
+      description: Temps d'attente avant de considérer que la vanne est réellement hors ligne (évite les fausses alertes)
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 60
+          unit_of_measurement: minutes
+
+    enable_notification:
+      name: Activer les notifications
+      description: Désactiver temporairement les notifications sans supprimer l'automatisation
+      default: true
+      selector:
+        boolean:
+
+mode: single
+max_exceeded: silent
+
+trigger:
+  # Déclencheur 1 : La vanne n'est plus montée (mounted_mode_active passe à OFF)
+  - platform: state
+    entity_id: !input vanne_entity
+    to: "off"
+    id: unmounted
+
+  # Déclencheur 2 : La vanne devient inaccessible (optionnel)
+  - platform: state
+    entity_id: !input vanne_entity
+    to: "unavailable"
+    for:
+      minutes: !input unavailable_delay
+    id: unavailable
+
+condition:
+  - condition: template
+    value_template: !input enable_notification
+
+variables:
+  vanne_name: !input vanne_name
+  unavailable_delay: !input unavailable_delay
+  notify_device: !input notify_device
+  notify_service: >
+    notify.mobile_app_{{ device_attr(notify_device, 'name')
+      | lower
+      | replace(' ', '_')
+      | replace('-', '_') }}
+
+action:
+  - choose:
+      # Cas 1 : Vanne débranchée/dévissée
+      - conditions:
+          - condition: trigger
+            id: unmounted
+        sequence:
+          - service: "{{ notify_service }}"
+            data:
+              title: "⚠️ VANNE DÉBRANCHÉE"
+              message: >
+                🔧 VANNE DÉMONTÉE DÉTECTÉE
+                📍 {{ vanne_name }}
+
+                Le capteur de montage indique que la vanne n'est plus installée correctement.
+
+                ✅ Vérifiez que :
+                • La vanne est bien vissée sur le radiateur
+                • Elle n'est pas tombée
+                • Le bouton central a été pressé pour lancer la calibration
+              data:
+                tag: "vanne_{{ vanne_name | slugify }}_unmounted"
+                notification_icon: mdi:radiator-off
+                push:
+                  sound:
+                    name: default
+                    critical: 1
+                    volume: 1.0
+                ttl: 0
+                priority: high
+
+          - service: logbook.log
+            data:
+              name: "Surveillance Vanne Danfoss"
+              message: "La vanne {{ vanne_name }} a été détectée comme débranchée"
+              entity_id: !input vanne_entity
+
+      # Cas 2 : Vanne inaccessible
+      - conditions:
+          - condition: trigger
+            id: unavailable
+          - condition: template
+            value_template: !input check_unavailable
+        sequence:
+          - service: "{{ notify_service }}"
+            data:
+              title: "🔴 VANNE INACCESSIBLE"
+              message: >
+                📡 PERTE DE CONNEXION
+                📍 {{ vanne_name }}
+                ⏱️ Hors ligne depuis {{ unavailable_delay }} min
+
+                ⚠️ Causes possibles :
+                • Pile faible ou déchargée
+                • Problème de connexion Zigbee
+                • Vanne hors de portée du réseau
+
+                ➡️ Vérifiez l'état de la vanne et sa connexion.
+              data:
+                tag: "vanne_{{ vanne_name | slugify }}_unavailable"
+                notification_icon: mdi:access-point-network-off
+                push:
+                  sound:
+                    name: default
+                    critical: 1
+                    volume: 1.0
+                ttl: 0
+                priority: high
+
+          - service: logbook.log
+            data:
+              name: "Surveillance Vanne Danfoss"
+              message: "La vanne {{ vanne_name }} est inaccessible"
+              entity_id: !input vanne_entity

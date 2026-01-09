@@ -42,8 +42,7 @@ blueprint:
       description: URL vers laquelle rediriger lors du clic sur la notification
       default: ""
 
-alias: "Gestion État : Prise Shelly Connexion"
-description: Alerte après X min hors ligne et notifie le retour en ligne
+mode: restart
 
 variables:
   notify_device: !input notify_device
@@ -52,26 +51,29 @@ variables:
       | lower
       | replace(' ', '_')
       | replace('-', '_') }}
+  device_name: !input device_name
+  offline_duration: !input offline_duration
 
-triggers:
-  - entity_id: !input device_sensor
+trigger:
+  - platform: state
+    entity_id: !input device_sensor
     to: "off"
     for:
       minutes: !input offline_duration
     id: debranche
-    trigger: state
-  - entity_id: !input device_sensor
+  - platform: state
+    entity_id: !input device_sensor
     from: "off"
     to: "on"
     id: rebranche
-    trigger: state
-actions:
+
+action:
   - choose:
       - conditions:
           - condition: trigger
             id: debranche
         sequence:
-          - action: "{{ notify_service }}"
+          - service: "{{ notify_service }}"
             data:
               title: "🔌 {{ device_name }}"
               message: "La prise Shelly est hors ligne depuis {{ offline_duration }} minutes"
@@ -79,14 +81,11 @@ actions:
                 notification_icon: mdi:power-plug-off
                 tag: !input notification_tag
                 url: !input notification_url
-            variables:
-              device_name: !input device_name
-              offline_duration: !input offline_duration
       - conditions:
           - condition: trigger
             id: rebranche
         sequence:
-          - action: "{{ notify_service }}"
+          - service: "{{ notify_service }}"
             data:
               title: "🔌 {{ device_name }}"
               message: "La prise Shelly est de nouveau connectée ✅"
@@ -94,6 +93,3 @@ actions:
                 notification_icon: mdi:power-plug
                 tag: !input notification_tag
                 url: !input notification_url
-            variables:
-              device_name: !input device_name
-mode: restart
