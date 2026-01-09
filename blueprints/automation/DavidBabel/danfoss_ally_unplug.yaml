@@ -1,5 +1,5 @@
 blueprint:
-  name: Surveillance Débranchement Vanne Danfoss Ally
+  name: "🕵️ Surveillance Débranchement Vanne Danfoss Ally"
   description: >
     Détecte et alerte lorsqu'une vanne thermostatique Danfoss Ally a été débranchée,
     dévissée du radiateur ou devient inaccessible.

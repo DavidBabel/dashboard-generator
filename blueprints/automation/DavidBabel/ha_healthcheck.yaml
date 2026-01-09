@@ -1,5 +1,5 @@
 blueprint:
-  name: "🏥 Health Check – Surveillance Serveurs (Scrape)"
+  name: "❤️ Health Check – Surveillance Serveurs (Scrape)"
   description: >
     Surveille vos capteurs de santé (Scrape).
     Envoie une notification critique si l'état n'est plus "OK" avec rappel périodique.
