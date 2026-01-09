@@ -1,5 +1,5 @@
 blueprint:
-  name: "NEW VT – Detection de beacon abandonné dans l'appartement"
+  name: "👮 Beacon abandonné dans l'appartement"
   description: "Bascule en Frost si le beacon est immobile. Analyse via Ratio Stats."
   domain: automation
 

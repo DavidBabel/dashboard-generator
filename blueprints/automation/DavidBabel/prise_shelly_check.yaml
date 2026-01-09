@@ -1,0 +1,87 @@
+blueprint:
+  name: "🔍 Surveillance Connexion Prise Shelly"
+  description: >
+    Envoie une alerte lorsqu'une prise Shelly est hors ligne pendant une durée configurable
+    et notifie quand elle revient en ligne.
+  domain: automation
+  input:
+    device_sensor:
+      name: Capteur de connexion
+      description: Le capteur binaire qui indique l'état de connexion de la prise Shelly
+      default: binary_sensor.prise_shelly_connexion
+      selector:
+        entity:
+          domain: binary_sensor
+    device_name:
+      name: Nom de l'appareil
+      description: Le nom de la prise/appareil à afficher dans les notifications
+      default: "Prise Shelly"
+    offline_duration:
+      name: Durée hors ligne avant alerte
+      description: Temps d'attente avant d'envoyer l'alerte de déconnexion
+      default: 30
+      selector:
+        number:
+          min: 1
+          max: 120
+          unit_of_measurement: minutes
+    notification_service:
+      name: Service de notification
+      description: Le service à utiliser pour envoyer les notifications
+      selector:
+        action:
+    notification_tag:
+      name: Tag de notification
+      description: Tag unique pour cette notification (permet de remplacer les notifications précédentes)
+      default: "alerte_shelly"
+    notification_url:
+      name: URL de notification (optionnel)
+      description: URL vers laquelle rediriger lors du clic sur la notification
+      default: ""
+
+alias: "Gestion État : Prise Shelly Connexion"
+description: Alerte après X min hors ligne et notifie le retour en ligne
+triggers:
+  - entity_id: !input device_sensor
+    to: "off"
+    for:
+      minutes: !input offline_duration
+    id: debranche
+    trigger: state
+  - entity_id: !input device_sensor
+    from: "off"
+    to: "on"
+    id: rebranche
+    trigger: state
+actions:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: debranche
+        sequence:
+          - action: !input notification_service
+            data:
+              title: "🔌 {{ device_name }}"
+              message: "La prise Shelly est hors ligne depuis {{ offline_duration }} minutes"
+              data:
+                notification_icon: mdi:power-plug-off
+                tag: !input notification_tag
+                url: !input notification_url
+            variables:
+              device_name: !input device_name
+              offline_duration: !input offline_duration
+      - conditions:
+          - condition: trigger
+            id: rebranche
+        sequence:
+          - action: !input notification_service
+            data:
+              title: "🔌 {{ device_name }}"
+              message: "La prise Shelly est de nouveau connectée ✅"
+              data:
+                notification_icon: mdi:power-plug
+                tag: !input notification_tag
+                url: !input notification_url
+            variables:
+              device_name: !input device_name
+mode: restart

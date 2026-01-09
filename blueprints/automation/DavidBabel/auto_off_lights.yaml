@@ -1,0 +1,161 @@
+blueprint:
+  name: "💡 Extinction Auto Lumières (Présence Temporisée)"
+  description: >
+    Extinction automatique des lumières basée sur un capteur de présence temporisée.
+    Robuste après reboot, respecte l'allumage manuel récent et conserve l'instrumentation et les logs.
+  domain: automation
+  input:
+    presence_sensor:
+      name: Capteur de présence temporisée
+      description: Le capteur binaire qui détecte la présence (avec temporisation)
+      default: binary_sensor.presence_communs_temporisee
+      selector:
+        entity:
+          domain: binary_sensor
+    light_switch_1:
+      name: Interrupteur lumière 1
+      description: Premier interrupteur de lumière à contrôler
+      default: switch.telerupteur_romains_lumieres_cuisine
+      selector:
+        entity:
+          domain: switch
+    light_switch_2:
+      name: Interrupteur lumière 2
+      description: Deuxième interrupteur de lumière à contrôler
+      default: switch.telerupteur_romains_lumieres_salon
+      selector:
+        entity:
+          domain: switch
+    automation_events_tracker:
+      name: Tracker d'événements d'automation
+      description: Input select pour suivre les événements de l'automation
+      default: input_select.lights_automation_events
+      selector:
+        entity:
+          domain: input_select
+    last_manual_on_datetime:
+      name: Date/heure du dernier allumage manuel
+      description: Input datetime qui stocke le dernier allumage manuel
+      default: input_datetime.salon_last_manual_on
+      selector:
+        entity:
+          domain: input_datetime
+    manual_on_grace_period:
+      name: Période de grâce après allumage manuel
+      description: Durée en secondes pendant laquelle l'extinction auto est désactivée après un allumage manuel
+      default: 900
+      selector:
+        number:
+          min: 0
+          max: 3600
+          unit_of_measurement: secondes
+    notification_service:
+      name: Service de notification
+      description: Service à utiliser pour les notifications de reboot
+      default: notify.mobile_app_ton_telephone
+      selector:
+        action:
+    reboot_delay:
+      name: Délai après reboot
+      description: Temps d'attente en secondes après un reboot avant d'éteindre les lumières
+      default: 60
+      selector:
+        number:
+          min: 0
+          max: 300
+          unit_of_measurement: secondes
+
+triggers:
+  - entity_id: !input presence_sensor
+    to: "off"
+    trigger: state
+  - event: start
+    id: reboot
+    trigger: homeassistant
+conditions:
+  - condition: or
+    conditions:
+      - condition: state
+        entity_id: !input light_switch_1
+        state: "on"
+      - condition: state
+        entity_id: !input light_switch_2
+        state: "on"
+actions:
+  - action: input_select.select_option
+    target:
+      entity_id: !input automation_events_tracker
+    data:
+      option: run
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: reboot
+        sequence:
+          - delay:
+              seconds: !input reboot_delay
+  - action: input_select.select_option
+    target:
+      entity_id: !input automation_events_tracker
+    data:
+      option: wait
+  - choose:
+      - conditions:
+          - condition: state
+            entity_id: !input presence_sensor
+            state: "on"
+        sequence:
+          - action: input_select.select_option
+            target:
+              entity_id: !input automation_events_tracker
+            data:
+              option: aborted_presence
+          - stop: Présence détectée – extinction annulée
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: |
+              {% set grace_period = grace_period_seconds | int %}
+              {% set last_manual = last_manual_datetime %}
+              {{ (now().timestamp() | int) -
+                 (state_attr(last_manual, 'timestamp') | int(0))
+                 < grace_period }}
+        sequence:
+          - action: input_select.select_option
+            target:
+              entity_id: !input automation_events_tracker
+            data:
+              option: aborted_manual
+          - stop: Allumage manuel récent respecté
+    variables:
+      grace_period_seconds: !input manual_on_grace_period
+      last_manual_datetime: !input last_manual_on_datetime
+  - action: switch.turn_off
+    target:
+      entity_id:
+        - !input light_switch_1
+        - !input light_switch_2
+  - action: input_select.select_option
+    target:
+      entity_id: !input automation_events_tracker
+    data:
+      option: lights_off
+  - action: system_log.write
+    data:
+      level: info
+      message: >-
+        Extinction auto validée : absence confirmée via
+        capteur de présence temporisée.
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: reboot
+        sequence:
+          - action: !input notification_service
+            data:
+              title: Home Assistant – Rattrapage post-reboot
+              message: >
+                Les lumières étaient allumées au redémarrage et ont été
+                éteintes automatiquement.
+mode: restart
+max_exceeded: silent
