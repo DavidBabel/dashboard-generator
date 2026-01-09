@@ -60,6 +60,15 @@ blueprint:
               value: "/dashboard-engelbreit/chambre-nord"
           custom_value: true
 
+    notify_device:
+      name: Device à notifier
+      description: >
+        Le device doit utiliser l'application mobile officielle Home Assistant.
+      selector:
+        device:
+          filter:
+            integration: mobile_app
+
 # Variables pour sécuriser les templates Jinja
 variables:
   ratio_ent: !input ratio_sensor
@@ -67,6 +76,13 @@ variables:
   thermostat_ent: !input target_thermostat
   site: !input site_name
   url_val: !input dashboard_url
+
+  notify_device: !input notify_device
+  notify_service: >
+    notify.mobile_app_{{ device_attr(notify_device, 'name')
+      | lower
+      | replace(' ', '_')
+      | replace('-', '_') }}
 
 trigger:
   - platform: time_pattern
@@ -96,7 +112,7 @@ action:
     data:
       preset_mode: frost
 
-  - service: notify.mobile_app_david_needs_internet
+  - service: "{{ notify_service }}"
     data:
       title: "🔥 Présence prolongée {{ site }}"
       message: >

@@ -25,11 +25,14 @@ blueprint:
           min: 1
           max: 120
           unit_of_measurement: minutes
-    notification_service:
-      name: Service de notification
-      description: Le service à utiliser pour envoyer les notifications
+    notify_device:
+      name: Device à notifier
+      description: >
+        Le device doit utiliser l'application mobile officielle Home Assistant.
       selector:
-        action:
+        device:
+          filter:
+            integration: mobile_app
     notification_tag:
       name: Tag de notification
       description: Tag unique pour cette notification (permet de remplacer les notifications précédentes)
@@ -41,6 +44,15 @@ blueprint:
 
 alias: "Gestion État : Prise Shelly Connexion"
 description: Alerte après X min hors ligne et notifie le retour en ligne
+
+variables:
+  notify_device: !input notify_device
+  notify_service: >
+    notify.mobile_app_{{ device_attr(notify_device, 'name')
+      | lower
+      | replace(' ', '_')
+      | replace('-', '_') }}
+
 triggers:
   - entity_id: !input device_sensor
     to: "off"
@@ -59,7 +71,7 @@ actions:
           - condition: trigger
             id: debranche
         sequence:
-          - action: !input notification_service
+          - action: "{{ notify_service }}"
             data:
               title: "🔌 {{ device_name }}"
               message: "La prise Shelly est hors ligne depuis {{ offline_duration }} minutes"
@@ -74,7 +86,7 @@ actions:
           - condition: trigger
             id: rebranche
         sequence:
-          - action: !input notification_service
+          - action: "{{ notify_service }}"
             data:
               title: "🔌 {{ device_name }}"
               message: "La prise Shelly est de nouveau connectée ✅"

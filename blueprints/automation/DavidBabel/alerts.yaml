@@ -36,7 +36,6 @@ blueprint:
       name: Device à notifier
       description: >
         Le device doit utiliser l'application mobile officielle Home Assistant.
-      default: e9fc0ee7906bd551b20c73c968d093c0
       selector:
         device:
           filter:

@@ -59,11 +59,13 @@ blueprint:
           domain: input_number
 
     notifier:
-      name: Service de notification
-      description: Service notify à utiliser
-      default: notify.mobile_app_david_needs_internet
+      name: Device à notifier
+      description: >
+        Le device doit utiliser l'application mobile officielle Home Assistant.
       selector:
-        text: {}
+        device:
+          filter:
+            integration: mobile_app
 
 trigger:
   - platform: time
@@ -75,6 +77,13 @@ action:
   - variables:
       seuil_alerte: "{{ states(seuil_entite) | float(80) }}"
       prefix_appartement: "{{ appartement.split(' ')[1] | lower }}"
+
+      notify_device: !input notifier
+      notify_service: >
+        notify.mobile_app_{{ device_attr(notify_device, 'name')
+          | lower
+          | replace(' ', '_')
+          | replace('-', '_') }}
 
   - variables:
       liste_simplifiee: |-
@@ -96,7 +105,7 @@ action:
   - condition: template
     value_template: "{{ liste_simplifiee | length > 0 }}"
 
-  - service: "{{ notifier }}"
+  - service: "{{ notify_service }}"
     data:
       title: "🔋 Piles à changer {{ appartement }}"
       message: "{{ liste_simplifiee }}"
