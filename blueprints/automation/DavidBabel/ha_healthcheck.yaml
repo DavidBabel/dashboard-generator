@@ -91,6 +91,8 @@ action:
                           volume: 1.0
                       ttl: 0
                       priority: high
+                      clickAction: /dashboard-locatif/
+                      url: /dashboard-locatif/
 
                 - delay:
                     minutes: "{{ rappel | int }}"

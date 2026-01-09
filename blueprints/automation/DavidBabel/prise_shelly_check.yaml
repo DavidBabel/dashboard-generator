@@ -12,14 +12,20 @@ blueprint:
       selector:
         entity:
           domain: binary_sensor
-    device_name:
-      name: Nom de l'appareil
-      description: Le nom de la prise/appareil à afficher dans les notifications
-      default: "Prise Shelly"
+    appartement:
+      name: Appartement
+      description: Sélectionnez l'appartement concerné
+      default: "Engel"
+      selector:
+        select:
+          options:
+            - "Engel"
+            - "Romains"
+            - "Carmes"
     offline_duration:
       name: Durée hors ligne avant alerte
       description: Temps d'attente avant d'envoyer l'alerte de déconnexion
-      default: 30
+      default: 10
       selector:
         number:
           min: 1
@@ -33,25 +39,19 @@ blueprint:
         device:
           filter:
             integration: mobile_app
-    notification_tag:
-      name: Tag de notification
-      description: Tag unique pour cette notification (permet de remplacer les notifications précédentes)
-      default: "alerte_shelly"
-    notification_url:
-      name: URL de notification (optionnel)
-      description: URL vers laquelle rediriger lors du clic sur la notification
-      default: ""
 
 mode: restart
 
 variables:
+  appartement: !input appartement
   notify_device: !input notify_device
   notify_service: >
     notify.mobile_app_{{ device_attr(notify_device, 'name')
       | lower
       | replace(' ', '_')
       | replace('-', '_') }}
-  device_name: !input device_name
+  device_name: "Prise Shelly {{ appartement }}"
+  notification_tag: "alerte_shelly_{{ appartement | lower }}"
   offline_duration: !input offline_duration
 
 trigger:
@@ -79,8 +79,9 @@ action:
               message: "La prise Shelly est hors ligne depuis {{ offline_duration }} minutes"
               data:
                 notification_icon: mdi:power-plug-off
-                tag: !input notification_tag
-                url: !input notification_url
+                tag: "{{ notification_tag }}"
+                url: /batteries-check/
+                clickAction: /batteries-check/
       - conditions:
           - condition: trigger
             id: rebranche
@@ -91,5 +92,6 @@ action:
               message: "La prise Shelly est de nouveau connectée ✅"
               data:
                 notification_icon: mdi:power-plug
-                tag: !input notification_tag
-                url: !input notification_url
+                tag: "{{ notification_tag }}"
+                url: /batteries-check/
+                clickAction: /batteries-check/
