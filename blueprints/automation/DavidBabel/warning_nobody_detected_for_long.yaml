@@ -1,4 +1,4 @@
-# Version: 1.0.1
+# Version: 1.0.2
 # Appartement: Romains
 blueprint:
   name: "🕵️ Warning – Capteur de Présence Potentiellement Caché"
@@ -154,12 +154,12 @@ action:
               data:
                 notification_icon: mdi:motion-sensor-off
                 tag: "{{ notification_tag }}"
-                url: /batteries-check/
-                clickAction: /batteries-check/
+                url: /presence-salon/
+                clickAction: /presence-salon/
                 actions:
                   - action: "URI"
                     title: "Voir capteurs"
-                    uri: "/batteries-check/"
+                    uri: "/presence-salon/"
 
       # ------------------------------------------------------------------------
       # SCÉNARIO 2 : Retour à la normale
@@ -193,5 +193,5 @@ action:
               data:
                 notification_icon: mdi:motion-sensor
                 tag: "{{ notification_tag }}"
-                url: /batteries-check/
-                clickAction: /batteries-check/
+                url: /presence-salon/
+                clickAction: /presence-salon/
