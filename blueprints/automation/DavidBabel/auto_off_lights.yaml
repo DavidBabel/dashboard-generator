@@ -1,32 +1,32 @@
+# Agent.md : Garde ces commentaire pour le contexte
+# Version simplifiée - repose uniquement sur le capteur de présence temporisée
+#
 blueprint:
   name: "💡 Extinction Auto Lumières (Présence Temporisée)"
   description: >
-    TODO revoir entierement ce scenario
     Extinction automatique des lumières basée sur un capteur de présence temporisée.
-    Robuste après reboot, respecte l'allumage manuel récent et conserve l'instrumentation et les logs.
+    Simple et efficace : le capteur gère déjà la temporisation.
   domain: automation
   input:
     presence_sensor:
       name: Capteur de présence temporisée
-      description: Le capteur binaire qui détecte la présence (avec temporisation)
+      description: Le capteur binaire qui détecte la présence (avec temporisation intégrée)
       default: binary_sensor.presence_communs_temporisee
       selector:
         entity:
           domain: binary_sensor
-    light_switch_1:
-      name: Interrupteur lumière 1
-      description: Premier interrupteur de lumière à contrôler
-      default: switch.telerupteur_romains_lumieres_cuisine
+
+    light_switches:
+      name: Lumières à éteindre
+      description: Sélectionnez les interrupteurs de lumières à contrôler
+      default:
+        - switch.telerupteur_romains_lumieres_cuisine
+        - switch.telerupteur_romains_lumieres_salon
       selector:
         entity:
           domain: switch
-    light_switch_2:
-      name: Interrupteur lumière 2
-      description: Deuxième interrupteur de lumière à contrôler
-      default: switch.telerupteur_romains_lumieres_salon
-      selector:
-        entity:
-          domain: switch
+          multiple: true
+
     automation_events_tracker:
       name: Tracker d'événements d'automation
       description: Input select pour suivre les événements de l'automation
@@ -34,22 +34,7 @@ blueprint:
       selector:
         entity:
           domain: input_select
-    last_manual_on_datetime:
-      name: Date/heure du dernier allumage manuel
-      description: Input datetime qui stocke le dernier allumage manuel
-      default: input_datetime.salon_last_manual_on
-      selector:
-        entity:
-          domain: input_datetime
-    manual_on_grace_period:
-      name: Période de grâce après allumage manuel
-      description: Durée en secondes pendant laquelle l'extinction auto est désactivée après un allumage manuel
-      default: 900
-      selector:
-        number:
-          min: 0
-          max: 3600
-          unit_of_measurement: secondes
+
     auto_off_counter:
       name: Compteur d'extinctions automatiques
       description: Entité counter qui compte le nombre de fois où l'automation a éteint les lumières
@@ -57,101 +42,79 @@ blueprint:
       selector:
         entity:
           domain: counter
-    reboot_delay:
-      name: Délai après reboot
-      description: Temps d'attente en secondes après un reboot avant d'éteindre les lumières
-      default: 60
-      selector:
-        number:
-          min: 0
-          max: 300
-          unit_of_measurement: secondes
 
-triggers:
-  - entity_id: !input presence_sensor
+mode: restart
+max_exceeded: silent
+
+trigger:
+  - platform: state
+    entity_id: !input presence_sensor
     to: "off"
-    trigger: state
-  - event: start
-    id: reboot
-    trigger: homeassistant
-conditions:
-  - condition: or
-    conditions:
-      - condition: state
-        entity_id: !input light_switch_1
-        state: "on"
-      - condition: state
-        entity_id: !input light_switch_2
-        state: "on"
-actions:
-  - action: input_select.select_option
+
+condition:
+  # Vérifie qu'au moins une lumière est allumée avant d'agir
+  - condition: template
+    value_template: >
+      {% set switches = light_switches %}
+      {{ switches | select('is_state', 'on') | list | count > 0 }}
+
+variables:
+  light_switches: !input light_switches
+
+action:
+  # État : démarrage
+  - service: input_select.select_option
     target:
       entity_id: !input automation_events_tracker
     data:
       option: run
-  - choose:
-      - conditions:
-          - condition: trigger
-            id: reboot
-        sequence:
-          - delay:
-              seconds: !input reboot_delay
-  - action: input_select.select_option
-    target:
-      entity_id: !input automation_events_tracker
-    data:
-      option: wait
+
+  # Double vérification de la présence (sécurité)
   - choose:
       - conditions:
           - condition: state
             entity_id: !input presence_sensor
             state: "on"
         sequence:
-          - action: input_select.select_option
+          - service: input_select.select_option
             target:
               entity_id: !input automation_events_tracker
             data:
               option: aborted_presence
           - stop: Présence détectée – extinction annulée
-  - choose:
-      - conditions:
-          - condition: template
-            value_template: |
-              {% set grace_period = grace_period_seconds | int %}
-              {% set last_manual = last_manual_datetime %}
-              {{ (now().timestamp() | int) -
-                 (state_attr(last_manual, 'timestamp') | int(0))
-                 < grace_period }}
-        sequence:
-          - action: input_select.select_option
-            target:
-              entity_id: !input automation_events_tracker
-            data:
-              option: aborted_manual
-          - stop: Allumage manuel récent respecté
-  - action: switch.turn_off
+
+  # Extinction des lumières
+  - service: switch.turn_off
     target:
-      entity_id:
-        - !input light_switch_1
-        - !input light_switch_2
-  - action: counter.increment
+      entity_id: !input light_switches
+
+  # Incrémentation du compteur
+  - service: counter.increment
     target:
       entity_id: !input auto_off_counter
-  - action: input_select.select_option
+
+  # État : lumières éteintes
+  - service: input_select.select_option
     target:
       entity_id: !input automation_events_tracker
     data:
       option: lights_off
-  - action: system_log.write
+
+  # Log de l'événement
+  - service: system_log.write
     data:
       level: info
-      message: >-
-        Extinction auto validée : absence confirmée via
-        capteur de présence temporisée.
+      message: >
+        Extinction auto validée : absence confirmée via capteur de présence temporisée.
+        Lumières éteintes : {{ light_switches | join(', ') }}
 
-mode: restart
-max_exceeded: silent
+  # Attente avant retour à l'état idle
+  - delay:
+      seconds: 5
 
-variables:
-  grace_period_seconds: !input manual_on_grace_period
-  last_manual_datetime: !input last_manual_on_datetime
+  # État : terminé avec succès
+  - service: input_select.select_option
+    target:
+      entity_id: !input automation_events_tracker
+    data:
+      option: idle
