@@ -35,14 +35,12 @@ blueprint:
     grace_period_on_light_on:
       name: Délai de grâce après allumage
       description: >
-        Temps d'attente avant extinction si lumière allumée alors que pas de présence.
+        Entité input_number définissant le temps d'attente avant extinction si lumière allumée alors que pas de présence.
         Recommandé : au moins 40 secondes. En dessous, uniquement pour les tests.
-      default: 120
+      default: input_number.duree_grace_period_on_light_on
       selector:
-        number:
-          min: 5
-          max: 600
-          unit_of_measurement: secondes
+        entity:
+          domain: input_number
 
     auto_off_counter:
       name: Compteur d'extinctions automatiques
@@ -77,6 +75,7 @@ condition:
 
 variables:
   light_switches: !input light_switches
+  grace_period_entity: !input grace_period_on_light_on
 
 action:
   # État : démarrage
@@ -109,7 +108,7 @@ action:
             id: light_turned_on
         sequence:
           - delay:
-              seconds: !input grace_period_on_light_on
+              seconds: "{{ states(grace_period_entity) | int }}"
 
   # Double vérification de la présence (sécurité)
   - choose:
