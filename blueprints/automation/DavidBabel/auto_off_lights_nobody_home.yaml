@@ -32,6 +32,17 @@ blueprint:
         entity:
           domain: input_select
 
+    grace_period_on_nobody_home:
+      name: Délai de grâce avant extinction
+      description: >
+        Entité input_number définissant le temps d'attente après détection d'absence avant d'éteindre les lumières.
+        Permet d'éviter une extinction immédiate si quelqu'un sort brièvement.
+        Recommandé : au moins 40 secondes. En dessous, uniquement pour les tests.
+      default: input_number.duree_grace_period_on_light_on
+      selector:
+        entity:
+          domain: input_number
+
     auto_off_counter:
       name: Compteur d'extinctions automatiques
       description: Entité counter qui compte le nombre de fois où l'automation a éteint les lumières
@@ -57,6 +68,7 @@ condition:
 
 variables:
   light_switches: !input light_switches
+  grace_period_entity: !input grace_period_on_nobody_home
 
 action:
   # État : démarrage
@@ -65,6 +77,10 @@ action:
       entity_id: !input automation_events_tracker
     data:
       option: run
+
+  # Délai de grâce après détection d'absence
+  - delay:
+      seconds: "{{ states(grace_period_entity) | int }}"
 
   # Double vérification de la présence (sécurité)
   - choose:
