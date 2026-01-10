@@ -1,4 +1,5 @@
 https://raw.githubusercontent.com/DavidBabel/ha/master/blueprints/automation/DavidBabel/alerts.yaml
+https://raw.githubusercontent.com/DavidBabel/ha/master/blueprints/automation/DavidBabel/auto_off_lights_nobody_home.yaml
 https://raw.githubusercontent.com/DavidBabel/ha/master/blueprints/automation/DavidBabel/auto_off_lights.yaml
 https://raw.githubusercontent.com/DavidBabel/ha/master/blueprints/automation/DavidBabel/batteries_check.yaml
 https://raw.githubusercontent.com/DavidBabel/ha/master/blueprints/automation/DavidBabel/capteur_presence_check.yaml

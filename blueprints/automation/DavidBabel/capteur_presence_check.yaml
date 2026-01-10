@@ -91,11 +91,6 @@ action:
                     message: >
                       ⚠️ Le détecteur de présence est hors ligne !
                       📍 {{ nom }}
-
-                      Causes possibles :
-                      • Pile faible ou déchargée
-                      • Capteur débranché ou tombé
-                      • Problème de connexion Zigbee
                     data:
                       tag: "presence_check_{{ capteur }}"
                       notification_icon: mdi:motion-sensor-off
