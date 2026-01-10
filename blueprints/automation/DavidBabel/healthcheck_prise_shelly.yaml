@@ -1,4 +1,4 @@
-# Version: 1.0.2
+# Version: 1.0.3
 # Appartement: Tous
 blueprint:
   name: "❤️ Health Check – Surveillance Connexion Prise Shelly"
@@ -121,6 +121,11 @@ action:
               message: "La prise Shelly est hors ligne depuis {{ offline_duration }} minutes"
               data:
                 notification_icon: mdi:power-plug-off
+                push:
+                  sound:
+                    name: default
+                    critical: 1
+                    volume: 1.0
                 tag: "{{ notification_tag }}"
                 url: /batteries-check/
                 clickAction: /batteries-check/

@@ -1,4 +1,4 @@
-# Version: 1.0.5
+# Version: 1.0.6
 # Appartement: Tous
 blueprint:
   name: "🪫 Check Batteries Domotique (Multi-appartements)"
@@ -121,9 +121,9 @@ mode: single
 # ==============================================================================
 variables:
   # Seuil de batterie défini par l'utilisateur
-  seuil_alerte: "{{ states(seuil_entite) | float(80) }}"
+  seuil_alerte: "{{ states(!input seuil_entite) | float(80) }}"
   # Extraction du préfixe d'appartement pour le filtrage
-  prefix_appartement: "{{ appartement.split(' ')[1] | lower }}"
+  prefix_appartement: "{{ (!input appartement).split(' ')[1] | lower }}"
   # Configuration du service de notification
   notify_device: !input notifier
   notify_service: >
@@ -156,9 +156,10 @@ action:
   # Filtre les batteries de l'appartement concerné qui sont sous le seuil
   # --------------------------------------------------------------------------
   - variables:
+      batteries_list: !input batteries
       liste_simplifiee: |-
         {% set ns = namespace(items=[]) %}
-        {% for entity in batteries %}
+        {% for entity in batteries_list %}
           {% if prefix_appartement in entity %}
             {% set bat = states(entity) | float(100) %}
             {% if bat < seuil_alerte %}
