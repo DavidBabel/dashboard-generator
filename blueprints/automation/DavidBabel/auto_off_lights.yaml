@@ -57,12 +57,6 @@ blueprint:
       selector:
         entity:
           domain: counter
-    notification_service:
-      name: Service de notification
-      description: Service à utiliser pour les notifications de reboot
-      default: notify.mobile_app_ton_telephone
-      selector:
-        action:
     reboot_delay:
       name: Délai après reboot
       description: Temps d'attente en secondes après un reboot avant d'éteindre les lumières
@@ -135,9 +129,6 @@ actions:
             data:
               option: aborted_manual
           - stop: Allumage manuel récent respecté
-    variables:
-      grace_period_seconds: !input manual_on_grace_period
-      last_manual_datetime: !input last_manual_on_datetime
   - action: switch.turn_off
     target:
       entity_id:
@@ -157,17 +148,6 @@ actions:
       message: >-
         Extinction auto validée : absence confirmée via
         capteur de présence temporisée.
-  - choose:
-      - conditions:
-          - condition: trigger
-            id: reboot
-        sequence:
-          - action: !input notification_service
-            data:
-              title: Home Assistant – Rattrapage post-reboot
-              message: >
-                Les lumières étaient allumées au redémarrage et ont été
-                éteintes automatiquement.
 
 mode: restart
 max_exceeded: silent
