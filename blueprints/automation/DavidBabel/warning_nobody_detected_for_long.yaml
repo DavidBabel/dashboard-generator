@@ -1,4 +1,4 @@
-# Version: 1.0.5
+# Version: 1.0.6
 # Appartement: Romains
 blueprint:
   name: "🕵️ Warning – Capteur de Présence Potentiellement Caché"
@@ -115,16 +115,9 @@ trigger:
     id: changement_sensor
 
   # --------------------------------------------------------------------------
-  # Trigger 2 : Changement de la valeur du seuil
-  # Permet de réévaluer immédiatement si le seuil est modifié
-  # --------------------------------------------------------------------------
-  - platform: state
-    entity_id: !input presence_threshold
-    id: changement_seuil
-
-  # --------------------------------------------------------------------------
-  # Trigger 3 : Détection faible prolongée
+  # Trigger 2 : Détection faible prolongée
   # Se déclenche si le sensor reste sous le seuil pendant X jours
+  # Note : Si durée = 0, se déclenche immédiatement
   # --------------------------------------------------------------------------
   - platform: template
     value_template: >
@@ -164,35 +157,63 @@ action:
 
       # ------------------------------------------------------------------------
       # SCÉNARIO 2 : Retour à la normale
-      # Se déclenche quand le sensor ou le seuil change ET que la valeur
-      # repasse au-dessus du seuil (uniquement dans les 24h après une alerte)
+      # Se déclenche quand le sensor change ET que la valeur
+      # repasse au-dessus du seuil
       # ------------------------------------------------------------------------
       - conditions:
-          # Le trigger doit être un changement de sensor ou de seuil
-          - condition: or
-            conditions:
-              - condition: trigger
-                id: changement_sensor
-              - condition: trigger
-                id: changement_seuil
+          # Le trigger doit être un changement de sensor
+          - condition: trigger
+            id: changement_sensor
 
           # La valeur actuelle doit être >= au seuil (retour à la normale)
           - condition: template
             value_template: >
               {{ states(presence_stats_sensor) | float >= states(presence_threshold_entity) | float }}
-
-          # Vérifie qu'une alerte a été envoyée dans les dernières 24h
-          # (évite les notifications inutiles)
-          - condition: template
-            value_template: >
-              {{ (now() - states[notification_tag.replace('alerte_presence_', '').replace('_', '.')].last_changed).total_seconds() < 86400 }}
         sequence:
           - service: "{{ notify_service }}"
             data:
               title: "✅ {{ sensor_name }}"
-              message: "Le capteur détecte à nouveau une activité normale"
+              message: "Le capteur détecte à nouveau une activité normale ({{ states(presence_stats_sensor) }}%)"
               data:
                 notification_icon: mdi:motion-sensor
                 tag: "{{ notification_tag }}"
+                url: /presence-salon/
+                clickAction: /presence-salon/
+
+    # --------------------------------------------------------------------------
+    # SCÉNARIO PAR DÉFAUT : Exécution manuelle
+    # S'exécute si aucun trigger spécifique (test manuel)
+    # --------------------------------------------------------------------------
+    default:
+      - choose:
+          # Si le sensor est sous le seuil → envoyer alerte
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ states(presence_stats_sensor) | float < states(presence_threshold_entity) | float }}
+            sequence:
+              - service: "{{ notify_service }}"
+                data:
+                  title: "⚠️ [TEST] {{ sensor_name }}"
+                  message: >
+                    Test manuel : Le capteur détecte actuellement {{ states(presence_stats_sensor) }}%
+                    (seuil: {{ presence_threshold_value }}%)
+                  data:
+                    notification_icon: mdi:motion-sensor-off
+                    tag: "{{ notification_tag }}_test"
+                    url: /presence-salon/
+                    clickAction: /presence-salon/
+
+        # Sinon → tout va bien
+        default:
+          - service: "{{ notify_service }}"
+            data:
+              title: "✅ [TEST] {{ sensor_name }}"
+              message: >
+                Test manuel : Le capteur détecte actuellement {{ states(presence_stats_sensor) }}%
+                (seuil: {{ presence_threshold_value }}%) - OK
+              data:
+                notification_icon: mdi:motion-sensor
+                tag: "{{ notification_tag }}_test"
                 url: /presence-salon/
                 clickAction: /presence-salon/
