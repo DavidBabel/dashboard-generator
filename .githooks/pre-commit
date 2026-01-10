@@ -14,7 +14,7 @@ modified_files=()
 for file in $staged_files; do
     # Vérifier si c'est un blueprint
     if [[ $file =~ ^blueprints/automation/.+\.yaml$ ]] && [ -f "$file" ]; then
-        # Lire la version actuelle
+        # Lire la version actuelle (commentaire en haut du fichier)
         if grep -q "^# Version:" "$file"; then
             current_version=$(grep "^# Version:" "$file" | sed -E 's/^# Version:\s*([0-9]+\.[0-9]+\.[0-9]+)/\1/')
             major=$(echo "$current_version" | cut -d. -f1)
@@ -25,8 +25,12 @@ for file in $staged_files; do
             patch=$((patch + 1))
             new_version="$major.$minor.$patch"
 
-            # Remplacer la version
+            # Remplacer la version dans le commentaire (première ligne)
             sed -i.bak -E "s/^# Version:\s*[0-9]+\.[0-9]+\.[0-9]+/# Version: $new_version/" "$file"
+
+            # Remplacer la version dans la description du blueprint
+            sed -i.bak -E "s/(description:\s*>\s*\n\s*)Version:\s*[0-9]+\.[0-9]+\.[0-9]+/\1Version: $new_version/" "$file"
+
             rm -f "$file.bak"
         else
             # Ajouter la version en première ligne
@@ -36,6 +40,10 @@ for file in $staged_files; do
             # Insérer la version au début du fichier
             sed -i.bak "1i\\
 # Version: $new_version" "$file"
+
+            # Ajouter également dans la description
+            sed -i.bak -E "s/(description:\s*>\s*\n)/\1    Version: $new_version\n/" "$file"
+
             rm -f "$file.bak"
         fi
 

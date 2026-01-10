@@ -1,8 +1,9 @@
-# Version: 1.0.1
+# Version: 1.0.2
 # Appartement: Tous
 blueprint:
   name: "🛡️🔥 Urgence Maison – Multi-capteurs (Eau / Fumée / Autre)"
   description: >
+    Version: 1.0.1
     Alerte critique avec rappel périodique et notification de retour à la normale.
     Compatible iOS (critique) et Android. Anti-spam intégré.
   domain: automation

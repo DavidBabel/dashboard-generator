@@ -1,8 +1,9 @@
-# Version: 1.0.2
+# Version: 1.0.3
 # Appartement: Romains
 blueprint:
   name: "💡 Extinction Auto - Personne à la Maison"
   description: >
+    Version: 1.0.2
     Éteint automatiquement les lumières lorsque plus personne n'est présent dans le logement.
     Simple et efficace : détection de présence → extinction immédiate.
   domain: automation
