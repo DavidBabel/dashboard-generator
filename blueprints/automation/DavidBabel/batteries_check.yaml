@@ -1,4 +1,4 @@
-# Version: 1.0.7
+# Version: 1.0.8
 # Appartement: Tous
 blueprint:
   name: "🪫 Check Batteries Domotique (Multi-appartements)"
@@ -121,14 +121,19 @@ mode: single
 # ==============================================================================
 action:
   # --------------------------------------------------------------------------
-  # Étape 1 : Calcul de la liste des batteries faibles
-  # Filtre les batteries de l'appartement concerné qui sont sous le seuil
+  # Étape 1 : Récupération des inputs du blueprint
   # --------------------------------------------------------------------------
   - variables:
       appartement_input: !input appartement
       seuil_entite_input: !input seuil_entite
       batteries_list: !input batteries
       notify_device: !input notifier
+  
+  # --------------------------------------------------------------------------
+  # Étape 2 : Calcul de la liste des batteries faibles
+  # Filtre les batteries de l'appartement concerné qui sont sous le seuil
+  # --------------------------------------------------------------------------
+  - variables:
       seuil_alerte: "{{ states(seuil_entite_input) | float(80) }}"
       prefix_appartement: "{{ appartement_input.split(' ')[1] | lower }}"
       notify_service: >
@@ -153,14 +158,14 @@ action:
         {{ ns.items | join('\n') }}
 
   # --------------------------------------------------------------------------
-  # Étape 2 : Vérification qu'il y a au moins une batterie faible
+  # Étape 3 : Vérification qu'il y a au moins une batterie faible
   # Si liste vide, l'automation s'arrête ici (pas de notification)
   # --------------------------------------------------------------------------
   - condition: template
     value_template: "{{ liste_simplifiee | length > 0 }}"
 
   # --------------------------------------------------------------------------
-  # Étape 3 : Envoi de la notification avec la liste des batteries à changer
+  # Étape 4 : Envoi de la notification avec la liste des batteries à changer
   # --------------------------------------------------------------------------
   - service: "{{ notify_service }}"
     data:
