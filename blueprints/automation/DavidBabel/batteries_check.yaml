@@ -1,11 +1,11 @@
-# Version: 1.0.1
+# Version: 1.0.2
+# Appartement: Tous
 blueprint:
   name: "🪫 Check Batteries Domotique (Multi-appartements)"
   description: >
     Vérifie quotidiennement les batteries domotiques et notifie si certaines
     passent sous un seuil configurable via une entité input_number.
   domain: automation
-
   # ==============================================================================
   # INPUTS - Configuration des paramètres du blueprint
   # ==============================================================================
@@ -165,7 +165,7 @@ action:
   # Si liste vide, l'automation s'arrête ici (pas de notification)
   # --------------------------------------------------------------------------
   - condition: template
-    value_template: "{{ liste_simplifiee | length > 0 }}
+    value_template: "{{ liste_simplifiee | length > 0 }}"
 
   # --------------------------------------------------------------------------
   # Étape 3 : Envoi de la notification avec la liste des batteries à changer

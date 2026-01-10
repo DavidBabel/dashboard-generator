@@ -1,4 +1,6 @@
-# Version: 1.0.0blueprint:
+# Version: 1.0.0
+# Appartement: Tous
+blueprint:
   name: "🕵️ Beacon abandonné dans l'appartement"
   description: "Bascule en Frost si le beacon est immobile. Analyse via Ratio Stats."
   domain: automation
