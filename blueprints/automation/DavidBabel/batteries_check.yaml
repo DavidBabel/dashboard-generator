@@ -128,7 +128,7 @@ action:
       seuil_entite_input: !input seuil_entite
       batteries_list: !input batteries
       notify_device: !input notifier
-  
+
   # --------------------------------------------------------------------------
   # Étape 2 : Calcul de la liste des batteries faibles
   # Filtre les batteries de l'appartement concerné qui sont sous le seuil
