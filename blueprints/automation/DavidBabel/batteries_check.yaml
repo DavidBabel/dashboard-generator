@@ -1,4 +1,4 @@
-# Version: 1.0.6
+# Version: 1.0.7
 # Appartement: Tous
 blueprint:
   name: "🪫 Check Batteries Domotique (Multi-appartements)"
@@ -117,37 +117,6 @@ trigger:
 mode: single
 
 # ==============================================================================
-# VARIABLES : Préparation des données pour le filtrage et la notification
-# ==============================================================================
-variables:
-  # Seuil de batterie défini par l'utilisateur
-  seuil_alerte: "{{ states(!input seuil_entite) | float(80) }}"
-  # Extraction du préfixe d'appartement pour le filtrage
-  prefix_appartement: "{{ (!input appartement).split(' ')[1] | lower }}"
-  # Configuration du service de notification
-  notify_device: !input notifier
-  notify_service: >
-    notify.mobile_app_{{ device_attr(notify_device, 'name')
-      | lower
-      | replace(' ', '_')
-      | replace('-', '_') }}
-  liste_simplifiee: |-
-    {% set ns = namespace(items=[]) %}
-    {% for entity in batteries %}
-      {% if prefix_appartement in entity %}
-        {% set bat = states(entity) | float(100) %}
-        {% if bat < seuil_alerte %}
-          {% set name = state_attr(entity, 'friendly_name')
-            | regex_replace('(?i)batterie|battery|engel|romains|carmes', '')
-            | regex_replace('  +', ' ')
-            | trim %}
-          {% set ns.items = ns.items + [ name ~ " (" ~ bat | int ~ "%)" ] %}
-        {% endif %}
-      {% endif %}
-    {% endfor %}
-    {{ ns.items | join('\n') }}
-
-# ==============================================================================
 # ACTION : Vérification et notification des batteries faibles
 # ==============================================================================
 action:
@@ -156,7 +125,17 @@ action:
   # Filtre les batteries de l'appartement concerné qui sont sous le seuil
   # --------------------------------------------------------------------------
   - variables:
+      appartement_input: !input appartement
+      seuil_entite_input: !input seuil_entite
       batteries_list: !input batteries
+      notify_device: !input notifier
+      seuil_alerte: "{{ states(seuil_entite_input) | float(80) }}"
+      prefix_appartement: "{{ appartement_input.split(' ')[1] | lower }}"
+      notify_service: >
+        notify.mobile_app_{{ device_attr(notify_device, 'name')
+          | lower
+          | replace(' ', '_')
+          | replace('-', '_') }}
       liste_simplifiee: |-
         {% set ns = namespace(items=[]) %}
         {% for entity in batteries_list %}
@@ -185,7 +164,7 @@ action:
   # --------------------------------------------------------------------------
   - service: "{{ notify_service }}"
     data:
-      title: "🔋 Piles à changer {{ appartement }}"
+      title: "🔋 Piles à changer {{ appartement_input }}"
       message: "{{ liste_simplifiee }}"
       data:
         notification_icon: mdi:battery-alert
