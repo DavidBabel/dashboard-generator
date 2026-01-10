@@ -1,5 +1,5 @@
 blueprint:
-  name: "🔥 Urgence Maison – Multi-capteurs (Eau / Fumée / Autre)"
+  name: "🛡️🔥 Urgence Maison – Multi-capteurs (Eau / Fumée / Autre)"
   description: >
     Alerte critique avec rappel périodique et notification de retour à la normale.
     Compatible iOS (critique) et Android. Anti-spam intégré.

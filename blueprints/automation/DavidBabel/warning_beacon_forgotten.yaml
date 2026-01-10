@@ -1,5 +1,5 @@
 blueprint:
-  name: "👮 Beacon abandonné dans l'appartement"
+  name: "🕵️ Beacon abandonné dans l'appartement"
   description: "Bascule en Frost si le beacon est immobile. Analyse via Ratio Stats."
   domain: automation
   # TODO a changer vers "desactiver le chauffage" plutot que "frost"
