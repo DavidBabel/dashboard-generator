@@ -1,4 +1,4 @@
-# Version: 1.0.0
+# Version: 1.0.1
 # Appartement: Romains
 blueprint:
   name: "🕵️ Warning – Capteur de Présence Potentiellement Caché"
@@ -52,7 +52,7 @@ blueprint:
       default: 2
       selector:
         number:
-          min: 1
+          min: 0
           max: 10
           unit_of_measurement: jours
 
