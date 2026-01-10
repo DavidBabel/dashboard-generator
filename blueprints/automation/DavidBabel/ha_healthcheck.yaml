@@ -3,6 +3,7 @@ blueprint:
   description: >
     Surveille vos capteurs de santé (Scrape).
     Envoie une notification critique si l'état n'est plus "OK" avec rappel périodique.
+    A ete créé pour le home assistant maitre uniquement
   domain: automation
   input:
     capteurs:

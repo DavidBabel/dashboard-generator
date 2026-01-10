@@ -12,10 +12,10 @@ blueprint:
         - binary_sensor.detecteur_eau_engel_chauffe_eau_water_leak
         - binary_sensor.detecteur_eau_engel_cuisine_water_leak
         - binary_sensor.detecteur_eau_engel_salle_de_bains_water_leak
+        - binary_sensor.detecteur_fumee_engel_entree_smoke
         - binary_sensor.detecteur_eau_romains_salle_de_bains_water_leak
         - binary_sensor.detecteur_eau_romains_cuisine_water_leak
         - binary_sensor.detecteur_eau_romains_douche_water_leak
-        - binary_sensor.detecteur_fumee_engel_entree_smoke
         - binary_sensor.detecteur_fumee_romains_cellier_smoke
       selector:
         entity:
