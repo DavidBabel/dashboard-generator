@@ -1,4 +1,4 @@
-# Version: 1.0.3
+# Version: 1.0.4
 # Appartement: Tous
 blueprint:
   name: "🪫 Check Batteries Domotique (Multi-appartements)"
@@ -101,7 +101,13 @@ blueprint:
 # ==============================================================================
 trigger:
   - platform: time
-    at: "12:30:00"
+    at: "10:00:00"
+  - platform: time
+    at: "13:00:00"
+  - platform: time
+    at: "18:00:00"
+  - platform: time
+    at: "22:00:00"
 
 # ==============================================================================
 # MODE SINGLE : Une seule exécution à la fois
