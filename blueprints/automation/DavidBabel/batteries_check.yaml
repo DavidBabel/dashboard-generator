@@ -1,4 +1,4 @@
-# Version: 1.0.8
+# Version: 1.0.9
 # Appartement: Tous
 blueprint:
   name: "🪫 Check Batteries Domotique (Multi-appartements)"
@@ -121,32 +121,22 @@ mode: single
 # ==============================================================================
 action:
   # --------------------------------------------------------------------------
-  # Étape 1 : Récupération des inputs du blueprint
+  # Étape 1 : Calcul de la liste des batteries faibles
+  # Filtre les batteries de l'appartement concerné qui sont sous le seuil
   # --------------------------------------------------------------------------
   - variables:
       appartement_input: !input appartement
       seuil_entite_input: !input seuil_entite
       batteries_list: !input batteries
       notify_device: !input notifier
-
-  # --------------------------------------------------------------------------
-  # Étape 2 : Calcul de la liste des batteries faibles
-  # Filtre les batteries de l'appartement concerné qui sont sous le seuil
-  # --------------------------------------------------------------------------
-  - variables:
-      seuil_alerte: "{{ states(seuil_entite_input) | float(80) }}"
-      prefix_appartement: "{{ appartement_input.split(' ')[1] | lower }}"
-      notify_service: >
-        notify.mobile_app_{{ device_attr(notify_device, 'name')
-          | lower
-          | replace(' ', '_')
-          | replace('-', '_') }}
       liste_simplifiee: |-
+        {% set seuil = states(seuil_entite_input) | float(80) %}
+        {% set prefix = appartement_input.split(' ')[1] | lower %}
         {% set ns = namespace(items=[]) %}
         {% for entity in batteries_list %}
-          {% if prefix_appartement in entity %}
+          {% if prefix in entity %}
             {% set bat = states(entity) | float(100) %}
-            {% if bat < seuil_alerte %}
+            {% if bat < seuil %}
               {% set name = state_attr(entity, 'friendly_name')
                 | regex_replace('(?i)batterie|battery|engel|romains|carmes', '')
                 | regex_replace('  +', ' ')
@@ -156,16 +146,21 @@ action:
           {% endif %}
         {% endfor %}
         {{ ns.items | join('\n') }}
+      notify_service: >
+        notify.mobile_app_{{ device_attr(notify_device, 'name')
+          | lower
+          | replace(' ', '_')
+          | replace('-', '_') }}
 
   # --------------------------------------------------------------------------
-  # Étape 3 : Vérification qu'il y a au moins une batterie faible
+  # Étape 2 : Vérification qu'il y a au moins une batterie faible
   # Si liste vide, l'automation s'arrête ici (pas de notification)
   # --------------------------------------------------------------------------
   - condition: template
     value_template: "{{ liste_simplifiee | length > 0 }}"
 
   # --------------------------------------------------------------------------
-  # Étape 4 : Envoi de la notification avec la liste des batteries à changer
+  # Étape 3 : Envoi de la notification avec la liste des batteries à changer
   # --------------------------------------------------------------------------
   - service: "{{ notify_service }}"
     data:
