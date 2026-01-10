@@ -1,4 +1,4 @@
-# Version: 1.0.2
+# Version: 1.0.3
 # Appartement: Tous
 blueprint:
   name: "🪫 Check Batteries Domotique (Multi-appartements)"
@@ -36,30 +36,34 @@ blueprint:
       description: Liste des entités batterie à surveiller
       default:
         - sensor.chauffage_engel_chambre_salon_battery
-        - sensor.bouton_engel_chambre_salon_batterie
         - sensor.chauffage_engel_chambre_sud_battery
-        - sensor.bouton_engel_chambre_sud_batterie
         - sensor.chauffage_engel_chambre_ouest_battery
-        - sensor.bouton_engel_chambre_ouest_batterie
         - sensor.chauffage_engel_chambre_nord_battery
-        - sensor.bouton_engel_chambre_nord_batterie
         - sensor.temperature_engel_salle_de_bains_battery
+        - sensor.detecteur_eau_engel_salle_de_bains_battery
         - sensor.chauffage_engel_salon_battery
         - sensor.temperature_engel_communs_battery
+        - sensor.detecteur_eau_engel_chauffe_eau_battery
+        - sensor.detecteur_fumee_engel_entree_battery
+        - sensor.detecteur_eau_engel_cuisine_battery
+        - sensor.bouton_engel_chambre_salon_batterie
+        - sensor.bouton_engel_chambre_sud_batterie
+        - sensor.bouton_engel_chambre_ouest_batterie
+        - sensor.bouton_engel_chambre_nord_batterie
         - sensor.chauffage_romains_chambre_cuisine_battery
-        - sensor.bouton_romains_chambre_cuisine_batterie
         - sensor.chauffage_romains_chambre_cellier_battery
-        - sensor.bouton_romains_chambre_cellier_batterie
         - sensor.chauffage_romains_chambre_balcon_battery
-        - sensor.bouton_romains_chambre_balcon_batterie
         - sensor.chauffage_romains_chambre_grande_gauche_battery
-        - sensor.bouton_romains_chambre_grande_gauche_batterie
         - sensor.chauffage_romains_chambre_grande_droite_battery
-        - sensor.bouton_romains_chambre_grande_droite_batterie
         - sensor.chauffage_romains_salle_de_bains_battery
         - sensor.temperature_romains_salle_de_bains_battery
         - sensor.temperature_romains_communs_battery
         - sensor.detecteur_fumee_romains_cellier_battery
+        - sensor.bouton_romains_chambre_cuisine_batterie
+        - sensor.bouton_romains_chambre_cellier_batterie
+        - sensor.bouton_romains_chambre_balcon_batterie
+        - sensor.bouton_romains_chambre_grande_gauche_batterie
+        - sensor.bouton_romains_chambre_grande_droite_batterie
       selector:
         entity:
           domain: sensor
