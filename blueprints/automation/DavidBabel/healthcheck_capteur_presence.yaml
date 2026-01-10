@@ -1,9 +1,9 @@
-# Version: 1.0.3
+# Version: 1.0.4
 # Appartement: Romains
 blueprint:
   name: "❤️ Health Check – Surveillance Détecteurs de Présence Aqara"
   description: >
-    Version: 1.0.2
+    Version: 1.0.4
     Surveille vos détecteurs de présence Aqara et envoie une alerte critique
     lorsqu'un capteur devient inaccessible (pile faible, déconnexion, etc.).
     Notification de retour à la normale incluse.

@@ -60,10 +60,10 @@ for file in $staged_files; do
             # Insérer la version au début du fichier
             sed -i.bak "1i\\
 # Version: $new_version" "$file"
-            
+
             # Ajouter également dans la description
             sed -i.bak -E "s/(description:\s*>\s*\n)/\1    Version: $new_version\n/" "$file"
-            
+
             rm -f "$file.bak"
         fi
 

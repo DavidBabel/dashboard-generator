@@ -1,9 +1,9 @@
-# Version: 1.0.1
+# Version: 1.0.2
 # Appartement: Tous
 blueprint:
   name: "🕵️ Beacon abandonné dans l'appartement"
   description: >
-    Version: 1.0.0
+    Version: 1.0.2
     Bascule en Frost si le beacon est immobile. Analyse via Ratio Stats.
   domain: automation
   # TODO a changer vers "desactiver le chauffage" plutot que "frost"

@@ -1,9 +1,9 @@
-# Version: 1.0.3
+# Version: 1.0.4
 # Appartement: Carmes
 blueprint:
   name: "❤️ Health Check – Surveillance Serveurs (Scrape)"
   description: >
-    Version: 1.0.2
+    Version: 1.0.4
     Surveille vos capteurs de santé (Scrape).
     Envoie une notification critique si l'état n'est plus "OK" avec rappel périodique.
     A ete créé pour le home assistant maitre uniquement
