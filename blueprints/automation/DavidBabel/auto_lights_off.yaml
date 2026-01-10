@@ -154,6 +154,13 @@ action:
               entity_id: !input automation_events_tracker
             data:
               option: aborted_presence
+          - delay:
+              seconds: 20
+          - service: input_select.select_option
+            target:
+              entity_id: !input automation_events_tracker
+            data:
+              option: idle
           - stop: Lumière allumée mais présence détectée
 
   # Délai de grâce si allumage manuel (trigger light_turned_on)
@@ -177,6 +184,13 @@ action:
               entity_id: !input automation_events_tracker
             data:
               option: aborted_presence
+          - delay:
+              seconds: 20
+          - service: input_select.select_option
+            target:
+              entity_id: !input automation_events_tracker
+            data:
+              option: idle
           - stop: Présence détectée – extinction annulée
 
   # Extinction des lumières
