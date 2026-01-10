@@ -1,4 +1,4 @@
-blueprint:
+# Version: 1.0.0blueprint:
   name: "🧠🌡️ VT Reset Automatique Optimisé & Instrumenté (Stateless)"
   description: >
     Synchronise le VT avec la vanne physique, respecte les réglages manuels,

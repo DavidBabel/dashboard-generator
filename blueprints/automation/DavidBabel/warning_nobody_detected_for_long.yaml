@@ -1,4 +1,4 @@
-blueprint:
+# Version: 1.0.0blueprint:
   name: "🕵️ Warning – Capteur de Présence Potentiellement Caché"
   description: >
     Envoie une alerte lorsqu'un capteur de présence détecte très peu d'activité

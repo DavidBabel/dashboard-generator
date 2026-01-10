@@ -1,0 +1,105 @@
+#!/usr/bin/env python3
+"""
+Pre-commit hook pour incrémenter automatiquement la version des blueprints modifiés.
+Installation : voir README dans le dossier .githooks/
+"""
+
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+def get_staged_files():
+    """Récupère la liste des fichiers stagés pour le commit."""
+    result = subprocess.run(
+        ['git', 'diff', '--cached', '--name-only', '--diff-filter=ACM'],
+        capture_output=True,
+        text=True,
+        check=True
+    )
+    return result.stdout.strip().split('\n') if result.stdout.strip() else []
+
+def is_blueprint_file(filepath):
+    """Vérifie si le fichier est un blueprint."""
+    return (
+        filepath.startswith('blueprints/automation/') and
+        filepath.endswith('.yaml') and
+        Path(filepath).exists()
+    )
+
+def get_current_version(content):
+    """Extrait la version actuelle du fichier."""
+    match = re.search(r'^# Version:\s*(\d+)\.(\d+)\.(\d+)', content, re.MULTILINE)
+    if match:
+        return int(match.group(1)), int(match.group(2)), int(match.group(3))
+    return None
+
+def increment_patch_version(major, minor, patch):
+    """Incrémente la version patch."""
+    return major, minor, patch + 1
+
+def update_version_in_content(content, new_version):
+    """Met à jour la version dans le contenu du fichier."""
+    major, minor, patch = new_version
+    version_str = f"{major}.{minor}.{patch}"
+
+    # Si une version existe déjà, la remplacer
+    if re.search(r'^# Version:', content, re.MULTILINE):
+        content = re.sub(
+            r'^# Version:\s*\d+\.\d+\.\d+',
+            f'# Version: {version_str}',
+            content,
+            flags=re.MULTILINE
+        )
+    else:
+        # Sinon, ajouter après la première ligne
+        lines = content.split('\n')
+        lines.insert(1, f'# Version: {version_str}')
+        content = '\n'.join(lines)
+
+    return content
+
+def main():
+    """Point d'entrée principal du hook."""
+    staged_files = get_staged_files()
+    modified_files = []
+
+    for filepath in staged_files:
+        if not is_blueprint_file(filepath):
+            continue
+
+        # Lire le contenu du fichier
+        path = Path(filepath)
+        content = path.read_text(encoding='utf-8')
+
+        # Récupérer la version actuelle
+        current_version = get_current_version(content)
+
+        if current_version:
+            # Incrémenter la version patch
+            new_version = increment_patch_version(*current_version)
+        else:
+            # Initialiser à 1.0.0 si pas de version
+            new_version = (1, 0, 0)
+
+        # Mettre à jour le contenu
+        new_content = update_version_in_content(content, new_version)
+
+        # Sauvegarder le fichier
+        path.write_text(new_content, encoding='utf-8')
+
+        # Ajouter le fichier modifié au commit
+        subprocess.run(['git', 'add', filepath], check=True)
+
+        modified_files.append(f"{filepath}: {current_version or 'NEW'} → {new_version[0]}.{new_version[1]}.{new_version[2]}")
+        print(f"✓ Version mise à jour : {filepath}")
+
+    if modified_files:
+        print("\n📦 Versions automatiquement incrémentées :")
+        for msg in modified_files:
+            print(f"  • {msg}")
+
+    return 0
+
+if __name__ == '__main__':
+    sys.exit(main())
