@@ -1,0 +1,8 @@
+alias: Update Blueprints Daily
+description: Met à jour automatiquement tous les blueprints depuis GitHub
+triggers:
+  - at: "03:00:00"
+    trigger: time
+actions:
+  - action: shell_command.update_blueprints
+mode: single
