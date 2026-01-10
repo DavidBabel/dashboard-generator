@@ -131,23 +131,25 @@ Vérifiez que la version a été incrémentée.
 
 ### Le hook ne s'exécute pas
 
-```powershell
+```bash
 # Vérifier la configuration
 git config core.hooksPath
 
 # Doit retourner : .githooks
 ```
 
-### Erreur Python
+Si la configuration est correcte mais le hook ne s'exécute pas, vérifiez que vous utilisez **Git Bash** pour faire vos commits (pas PowerShell ou CMD).
 
-```powershell
-# Tester le script directement
-python .githooks/pre-commit
+### Tester le hook manuellement
+
+```bash
+# Depuis Git Bash
+bash .githooks/pre-commit
 ```
 
 ### Réinitialiser les hooks
 
-```powershell
+```bash
 # Retour aux hooks par défaut
 git config --unset core.hooksPath
 ```
@@ -155,9 +157,11 @@ git config --unset core.hooksPath
 ## 📊 Avantages
 
 ✅ **Zéro effort** : Versioning automatique
+✅ **Zéro dépendance** : Utilise uniquement Git Bash (inclus avec Git)
 ✅ **Traçabilité** : Historique clair des modifications
 ✅ **Cohérence** : Format SemVer standardisé
 ✅ **Simplicité** : Rien à penser, tout est géré
+✅ **Multi-plateforme** : Fonctionne sur Windows, Linux et Mac
 
 ## 🔄 Migration des blueprints existants
 

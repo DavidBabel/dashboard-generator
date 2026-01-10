@@ -1,8 +1,17 @@
 {
-  "yaml.validate": false,
-  "yaml.schemaStore.enable": false,
+  "yaml.validate": true,
+  "yaml.schemaStore.enable": true,
   "yaml.customTags": [
     "!secret scalar",
-    "!include scalar"
-  ]
+    "!include scalar",
+    "!include_dir_list scalar",
+    "!include_dir_named scalar",
+    "!include_dir_merge_list scalar",
+    "!include_dir_merge_named scalar",
+    "!input scalar",
+  ],
+  "files.associations": {
+    "**/githooks/pre-commit": "shellscript",
+    "**/.githooks/pre-commit": "shellscript"
+  }
 }

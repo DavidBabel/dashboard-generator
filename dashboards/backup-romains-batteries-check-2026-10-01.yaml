@@ -1,0 +1,376 @@
+views:
+  - title: Batteries & Checks
+    badges: []
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Chambre Cuisine
+            heading_style: title
+            icon: mdi:bed
+          - type: tile
+            grid_options:
+              columns: 12
+              rows: 1
+            entity: sensor.chauffage_romains_chambre_cuisine_battery
+            name:
+              - type: text
+                text: ♨️
+              - type: device
+            icon: ""
+            state_content:
+              - state
+              - last_updated
+            vertical: false
+            features_position: bottom
+          - type: tile
+            grid_options:
+              columns: 12
+              rows: 1
+            entity: sensor.bouton_romains_chambre_cuisine_batterie
+            name:
+              - type: text
+                text: 🗝️
+              - type: device
+            icon: ""
+            state_content:
+              - state
+              - last_updated
+            vertical: false
+            features_position: bottom
+          - type: history-graph
+            entities:
+              - entity: binary_sensor.locataire_romains_chambre_cuisine_present
+                name: 🕘
+            hours_to_show: 168
+            logarithmic_scale: false
+      - type: grid
+        cards:
+          - type: heading
+            heading: Chambre Cellier
+            heading_style: title
+            icon: mdi:bed
+          - type: tile
+            grid_options:
+              columns: 12
+              rows: 1
+            entity: sensor.chauffage_romains_chambre_cellier_battery
+            name:
+              - type: text
+                text: ♨️
+              - type: device
+            state_content:
+              - state
+              - last_updated
+            vertical: false
+            features_position: bottom
+          - type: tile
+            grid_options:
+              columns: 12
+              rows: 1
+            entity: sensor.bouton_romains_chambre_cellier_batterie
+            name:
+              - type: text
+                text: 🗝️
+              - type: device
+            state_content:
+              - state
+              - last_updated
+            vertical: false
+            features_position: bottom
+          - type: history-graph
+            entities:
+              - entity: binary_sensor.locataire_romains_chambre_cellier_present
+                name: 🕘
+            hours_to_show: 168
+            logarithmic_scale: false
+      - type: grid
+        cards:
+          - type: heading
+            heading: Chambre Balcon
+            heading_style: title
+            icon: mdi:bed
+          - type: tile
+            grid_options:
+              columns: 12
+              rows: 1
+            entity: sensor.chauffage_romains_chambre_balcon_battery
+            name:
+              - type: text
+                text: ♨️
+              - type: device
+            state_content:
+              - state
+              - last_updated
+            vertical: false
+            features_position: bottom
+          - type: tile
+            grid_options:
+              columns: 12
+              rows: 1
+            entity: sensor.bouton_romains_chambre_balcon_batterie
+            name:
+              - type: text
+                text: 🗝️
+              - type: device
+            state_content:
+              - state
+              - last_updated
+            vertical: false
+            features_position: bottom
+          - type: history-graph
+            entities:
+              - entity: binary_sensor.locataire_romains_chambre_balcon_present
+                name: 🕘
+            hours_to_show: 168
+            logarithmic_scale: false
+      - type: grid
+        cards:
+          - type: heading
+            heading: Chambre Grande Gauche
+            heading_style: title
+            icon: mdi:bed
+          - type: tile
+            grid_options:
+              columns: 12
+              rows: 1
+            entity: sensor.chauffage_romains_chambre_grande_gauche_battery
+            name:
+              - type: text
+                text: ♨️
+              - type: device
+            state_content:
+              - state
+              - last_updated
+            vertical: false
+            features_position: bottom
+          - type: tile
+            grid_options:
+              columns: 12
+              rows: 1
+            entity: sensor.bouton_romains_chambre_grande_gauche_batterie
+            name:
+              - type: text
+                text: 🗝️
+              - type: device
+            state_content:
+              - state
+              - last_updated
+            vertical: false
+            features_position: bottom
+          - type: history-graph
+            entities:
+              - entity: binary_sensor.locataire_romains_chambre_grande_gauche_present
+                name: 🕘
+            hours_to_show: 168
+            logarithmic_scale: false
+      - type: grid
+        cards:
+          - type: heading
+            heading: Chambre Grande Droite
+            heading_style: title
+            icon: mdi:bed
+          - type: tile
+            grid_options:
+              columns: 12
+              rows: 1
+            entity: sensor.chauffage_romains_chambre_grande_droite_battery
+            name:
+              - type: text
+                text: ♨️
+              - type: device
+            state_content:
+              - state
+              - last_updated
+            vertical: false
+            features_position: bottom
+          - type: tile
+            grid_options:
+              columns: 12
+              rows: 1
+            entity: sensor.bouton_romains_chambre_grande_droite_batterie
+            name:
+              - type: text
+                text: 🗝️
+              - type: device
+            state_content:
+              - state
+              - last_updated
+            vertical: false
+            features_position: bottom
+          - type: history-graph
+            entities:
+              - entity: binary_sensor.locataire_romains_chambre_grande_droite_present
+                name: 🕘
+            hours_to_show: 168
+            logarithmic_scale: false
+      - type: grid
+        cards:
+          - type: heading
+            heading: Salle de Bains
+            heading_style: title
+            icon: mdi:shower
+          - type: tile
+            grid_options:
+              columns: 12
+              rows: 1
+            entity: sensor.chauffage_romains_salle_de_bains_battery
+            name:
+              - type: text
+                text: ♨️
+              - type: device
+            state_content:
+              - state
+              - last_updated
+            vertical: false
+            features_position: bottom
+          - type: tile
+            grid_options:
+              columns: 12
+              rows: 1
+            entity: sensor.temperature_romains_salle_de_bains_battery
+            name:
+              - type: text
+                text: 🌡️
+              - type: device
+            state_content:
+              - state
+              - last_updated
+            vertical: false
+            features_position: bottom
+      - type: grid
+        cards:
+          - type: heading
+            heading: Salon
+            heading_style: title
+            icon: mdi:sofa
+          - type: tile
+            grid_options:
+              columns: 12
+              rows: 1
+            entity: sensor.temperature_romains_communs_battery
+            name:
+              - type: text
+                text: 🌡️
+              - type: device
+            state_content:
+              - state
+              - last_updated
+            vertical: false
+            features_position: bottom
+      - type: grid
+        cards:
+          - type: heading
+            heading: Cellier
+            heading_style: title
+            icon: mdi:fridge-outline
+          - type: tile
+            grid_options:
+              columns: 12
+              rows: 1
+            entity: sensor.detecteur_fumee_romains_cellier_battery
+            name:
+              - type: text
+                text: 🔥
+              - type: device
+            state_content:
+              - state
+              - last_updated
+            vertical: false
+            features_position: bottom
+          - type: tile
+            grid_options:
+              columns: 24
+              rows: 1
+            entity: input_number.seuil_alerte_batterie
+            name:
+              - type: text
+                text: Config
+              - type: entity
+            icon: ""
+            color: blue
+            vertical: false
+            features:
+              - style: slider
+                type: numeric-input
+            features_position: bottom
+      - type: grid
+        cards:
+          - type: heading
+            icon: mdi:motion-sensor
+            heading: Présence
+            heading_style: title
+          - type: history-graph
+            entities:
+              - entity: binary_sensor.locataire_romains_chambre_cuisine_present
+                name:
+                  - type: text
+                    text: 🔑
+                  - type: area
+              - entity: binary_sensor.telephone_romains_chambre_cuisine
+                name:
+                  - type: text
+                    text: 📱
+                  - type: area
+              - entity: binary_sensor.locataire_romains_chambre_cellier_present
+                name:
+                  - type: text
+                    text: 🔑
+                  - type: area
+              - entity: binary_sensor.telephone_romains_chambre_cellier
+                name:
+                  - type: text
+                    text: 📱
+                  - type: area
+              - entity: binary_sensor.locataire_romains_chambre_balcon_present
+                name:
+                  - type: text
+                    text: 🔑
+                  - type: area
+              - entity: binary_sensor.telephone_romains_chambre_balcon
+                name:
+                  - type: text
+                    text: 📱
+                  - type: area
+              - entity: binary_sensor.locataire_romains_chambre_grande_gauche_present
+                name:
+                  - type: text
+                    text: 🔑
+                  - type: area
+              - entity: binary_sensor.telephone_romains_chambre_grande_gauche
+                name:
+                  - type: text
+                    text: 📱
+                  - type: area
+              - entity: binary_sensor.locataire_romains_chambre_grande_droite_present
+                name:
+                  - type: text
+                    text: 🔑
+                  - type: area
+              - entity: binary_sensor.telephone_romains_chambre_grande_droite
+                name:
+                  - type: text
+                    text: 📱
+                  - type: area
+              - entity: binary_sensor.romains_anyone_is_present
+                name:
+                  - type: text
+                    text: 🔑
+                  - type: text
+                    text: Quelqu'un présent
+                  - type: text
+                    text: 🔑
+              - entity: binary_sensor.prise_shelly_connexion
+                name:
+                  - type: text
+                    text: 🔌
+                  - type: entity
+            grid_options:
+              columns: full
+            hours_to_show: 720
+            title: 🔊 Présence mensuelle
+        column_span: 4
+    type: sections
+    max_columns: 4
+    icon: ""
+    cards: []
