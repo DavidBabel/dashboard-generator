@@ -25,13 +25,33 @@ for file in $staged_files; do
             patch=$((patch + 1))
             new_version="$major.$minor.$patch"
 
-            # Remplacer la version dans le commentaire (première ligne)
-            sed -i.bak -E "s/^# Version:\s*[0-9]+\.[0-9]+\.[0-9]+/# Version: $new_version/" "$file"
+            # Créer un fichier temporaire pour les modifications
+            temp_file="${file}.tmp"
 
-            # Remplacer la version dans la description du blueprint
-            sed -i.bak -E "s/(description:\s*>\s*\n\s*)Version:\s*[0-9]+\.[0-9]+\.[0-9]+/\1Version: $new_version/" "$file"
+            # Traiter le fichier ligne par ligne
+            awk -v new_ver="$new_version" '
+                # Remplacer # Version: en première ligne
+                /^# Version:/ && NR == 1 {
+                    print "# Version: " new_ver
+                    next
+                }
+                # Remplacer Version: dans la description (après "description: >")
+                in_desc && /^[[:space:]]+Version:/ {
+                    sub(/Version:[[:space:]]*[0-9]+\.[0-9]+\.[0-9]+/, "Version: " new_ver)
+                    print
+                    in_desc = 0
+                    next
+                }
+                # Détecter le début de description
+                /description:[[:space:]]*>/ {
+                    in_desc = 1
+                }
+                # Imprimer toutes les autres lignes
+                { print }
+            ' "$file" > "$temp_file"
 
-            rm -f "$file.bak"
+            # Remplacer le fichier original
+            mv "$temp_file" "$file"
         else
             # Ajouter la version en première ligne
             new_version="1.0.0"
@@ -40,10 +60,10 @@ for file in $staged_files; do
             # Insérer la version au début du fichier
             sed -i.bak "1i\\
 # Version: $new_version" "$file"
-
+            
             # Ajouter également dans la description
             sed -i.bak -E "s/(description:\s*>\s*\n)/\1    Version: $new_version\n/" "$file"
-
+            
             rm -f "$file.bak"
         fi
 
