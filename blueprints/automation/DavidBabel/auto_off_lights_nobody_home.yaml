@@ -35,7 +35,7 @@ blueprint:
     auto_off_counter:
       name: Compteur d'extinctions automatiques
       description: Entité counter qui compte le nombre de fois où l'automation a éteint les lumières
-      default: counter.salon_lights_auto_off_count
+      default: counter.salon_lights_auto_off_count_nobody_here
       selector:
         entity:
           domain: counter
@@ -107,7 +107,7 @@ action:
 
   # Attente avant retour à l'état idle
   - delay:
-      seconds: 5
+      seconds: 20
 
   # État : terminé avec succès
   - service: input_select.select_option

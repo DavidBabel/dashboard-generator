@@ -152,7 +152,7 @@ action:
 
   # Attente avant retour à l'état idle
   - delay:
-      seconds: 5
+      seconds: 20
 
   # État : terminé avec succès
   - service: input_select.select_option
