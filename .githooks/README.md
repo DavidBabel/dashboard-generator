@@ -37,9 +37,13 @@ git config core.hooksPath .githooks
 
 C'est tout ! 🎉
 
-### ⚠️ Résolution du problème PowerShell
+### ⚠️ Dépendances
 
-Si vous avez l'erreur "execution de scripts est désactivée", utilisez le fichier `.bat` au lieu du `.ps1`.
+Le hook utilise **Bash** qui est automatiquement installé avec **Git Bash** sur Windows.
+
+- Git Bash est inclus avec l'installation de Git sur Windows
+- Aucune installation supplémentaire requise ! 🎉
+- Utilisez Git Bash pour faire vos commits
 
 ## 📦 Comment ça fonctionne ?
 
