@@ -4,7 +4,16 @@ blueprint:
   domain: automation
   # TODO a changer vers "desactiver le chauffage" plutot que "frost"
 
+  # ==============================================================================
+  # INPUTS - Configuration des paramètres du blueprint
+  # ==============================================================================
   input:
+    # --------------------------------------------------------------------------
+    # Capteur de statistique : ratio de présence calculé
+    # Type attendu : sensor.xxx de l'intégration statistics
+    # Valeur attendue : ratio entre 0 et 1 (0 = jamais présent, 1 = toujours présent)
+    # Créer via : Configuration.yaml avec platform: statistics
+    # --------------------------------------------------------------------------
     ratio_sensor:
       name: Capteur de statistique (ratio présence)
       description: "Filtre : Affiche uniquement les capteurs de l'intégration 'Statistics'."
@@ -13,6 +22,12 @@ blueprint:
           domain: sensor
           integration: statistics
 
+    # --------------------------------------------------------------------------
+    # Seuil de présence : pourcentage au-delà duquel on considère le beacon immobile
+    # Type attendu : input_number.xxx (Helper > Number)
+    # Valeur attendue : pourcentage entre 0 et 100 (recommandé : 95%)
+    # Créer via UI : Settings > Helpers > Create Helper > Number
+    # --------------------------------------------------------------------------
     input_seuil_percent:
       name: Seuil de présence (%)
       default: input_number.pourcentage_de_presence_beacon_abandonne
@@ -20,6 +35,11 @@ blueprint:
         entity:
           domain: input_number
 
+    # --------------------------------------------------------------------------
+    # Thermostat cible : VT à basculer en mode hors-gel
+    # Type attendu : climate.xxx de l'intégration versatile_thermostat
+    # Valeur attendue : entité climat avec support preset_mode = frost
+    # --------------------------------------------------------------------------
     target_thermostat:
       name: Versatile Thermostat
       selector:
@@ -27,6 +47,11 @@ blueprint:
           domain: climate
           integration: versatile_thermostat
 
+    # --------------------------------------------------------------------------
+    # Nom du site : identification de l'appartement
+    # Type attendu : sélection parmi les options définies
+    # Valeur attendue : nom du site
+    # --------------------------------------------------------------------------
     site_name:
       name: Nom du Site
       selector:
@@ -35,6 +60,11 @@ blueprint:
             - Romains
             - Engel
 
+    # --------------------------------------------------------------------------
+    # URL du dashboard : lien vers la chambre concernée
+    # Type attendu : URL de dashboard Home Assistant
+    # Valeur attendue : chemin vers la vue dashboard
+    # --------------------------------------------------------------------------
     dashboard_url:
       name: URL du Dashboard (Chambre)
       default: "/dashboard-engelbreit/chambre-salon"
@@ -61,6 +91,10 @@ blueprint:
               value: "/dashboard-engelbreit/chambre-nord"
           custom_value: true
 
+    # --------------------------------------------------------------------------
+    # Device de notification : appareil mobile recevant les alertes
+    # Type attendu : device avec l'app mobile Home Assistant installée
+    # --------------------------------------------------------------------------
     notify_device:
       name: Device à notifier
       description: >
@@ -70,7 +104,9 @@ blueprint:
           filter:
             integration: mobile_app
 
-# Variables pour sécuriser les templates Jinja
+# ==============================================================================
+# VARIABLES : Préparation des données pour les conditions et actions
+# ==============================================================================
 variables:
   ratio_ent: !input ratio_sensor
   seuil_ent: !input input_seuil_percent
@@ -85,10 +121,21 @@ variables:
       | replace(' ', '_')
       | replace('-', '_') }}
 
+# ==============================================================================
+# TRIGGER : Vérification périodique toutes les 3 heures
+# ==============================================================================
 trigger:
+  # --------------------------------------------------------------------------
+  # Trigger : Vérification automatique
+  # Se déclenche quand : toutes les 3 heures
+  # Objectif : détecter un beacon oublié (présence prolongée anormale)
+  # --------------------------------------------------------------------------
   - platform: time_pattern
     hours: "/3"
 
+# ==============================================================================
+# CONDITIONS : Vérifications avant d'exécuter l'action
+# ==============================================================================
 condition:
   # 1. Capteur de stats valide
   - condition: template

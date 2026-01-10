@@ -4,7 +4,16 @@ blueprint:
     Vérifie quotidiennement les batteries domotiques et notifie si certaines
     passent sous un seuil configurable via une entité input_number.
   domain: automation
+
+  # ==============================================================================
+  # INPUTS - Configuration des paramètres du blueprint
+  # ==============================================================================
   input:
+    # --------------------------------------------------------------------------
+    # Appartement : filtre pour les capteurs concernés
+    # Type attendu : sélection parmi les options définies
+    # Valeur attendue : emoji + nom d'appartement
+    # --------------------------------------------------------------------------
     appartement:
       name: Appartement
       description: Sélectionne l'appartement concerné
@@ -16,6 +25,11 @@ blueprint:
             - "🟩 Romains"
             - "🟦 Carmes"
 
+    # --------------------------------------------------------------------------
+    # Capteurs de batteries : liste des sensors à surveiller
+    # Type attendu : sensor.xxx_battery (capteurs de niveau de batterie)
+    # Valeur attendue : pourcentage entre 0 et 100
+    # --------------------------------------------------------------------------
     batteries:
       name: Capteurs de batteries
       description: Liste des entités batterie à surveiller
@@ -50,6 +64,12 @@ blueprint:
           domain: sensor
           multiple: true
 
+    # --------------------------------------------------------------------------
+    # Seuil d'alerte : valeur de référence pour déclencher la notification
+    # Type attendu : input_number.xxx (Helper > Number)
+    # Valeur attendue : pourcentage entre 0 et 100 (recommandé : 80)
+    # Créer via UI : Settings > Helpers > Create Helper > Number
+    # --------------------------------------------------------------------------
     seuil_entite:
       name: Entité seuil d’alerte
       description: Entité input_number définissant le seuil batterie
@@ -58,6 +78,10 @@ blueprint:
         entity:
           domain: input_number
 
+    # --------------------------------------------------------------------------
+    # Device de notification : appareil mobile recevant les alertes
+    # Type attendu : device avec l'app mobile Home Assistant installée
+    # --------------------------------------------------------------------------
     notifier:
       name: Device à notifier
       description: >
@@ -67,15 +91,27 @@ blueprint:
           filter:
             integration: mobile_app
 
+# ==============================================================================
+# TRIGGER : Vérification quotidienne à heure fixe
+# ==============================================================================
 trigger:
   - platform: time
     at: "12:30:00"
 
+# ==============================================================================
+# MODE SINGLE : Une seule exécution à la fois
+# ==============================================================================
 mode: single
 
+# ==============================================================================
+# VARIABLES : Préparation des données pour le filtrage et la notification
+# ==============================================================================
 variables:
+  # Seuil de batterie défini par l'utilisateur
   seuil_alerte: "{{ states(seuil_entite) | float(80) }}"
+  # Extraction du préfixe d'appartement pour le filtrage
   prefix_appartement: "{{ appartement.split(' ')[1] | lower }}"
+  # Configuration du service de notification
   notify_device: !input notifier
   notify_service: >
     notify.mobile_app_{{ device_attr(notify_device, 'name')
@@ -98,7 +134,14 @@ variables:
     {% endfor %}
     {{ ns.items | join('\n') }}
 
+# ==============================================================================
+# ACTION : Vérification et notification des batteries faibles
+# ==============================================================================
 action:
+  # --------------------------------------------------------------------------
+  # Étape 1 : Calcul de la liste des batteries faibles
+  # Filtre les batteries de l'appartement concerné qui sont sous le seuil
+  # --------------------------------------------------------------------------
   - variables:
       liste_simplifiee: |-
         {% set ns = namespace(items=[]) %}
@@ -116,9 +159,16 @@ action:
         {% endfor %}
         {{ ns.items | join('\n') }}
 
+  # --------------------------------------------------------------------------
+  # Étape 2 : Vérification qu'il y a au moins une batterie faible
+  # Si liste vide, l'automation s'arrête ici (pas de notification)
+  # --------------------------------------------------------------------------
   - condition: template
-    value_template: "{{ liste_simplifiee | length > 0 }}"
+    value_template: "{{ liste_simplifiee | length > 0 }}
 
+  # --------------------------------------------------------------------------
+  # Étape 3 : Envoi de la notification avec la liste des batteries à changer
+  # --------------------------------------------------------------------------
   - service: "{{ notify_service }}"
     data:
       title: "🔋 Piles à changer {{ appartement }}"

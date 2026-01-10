@@ -4,7 +4,15 @@ blueprint:
     Extinction automatique des lumières basée sur un capteur de présence temporisée.
     Simple et efficace : le capteur gère déjà la temporisation.
   domain: automation
+  # ==============================================================================
+  # INPUTS - Configuration des paramètres du blueprint
+  # ==============================================================================
   input:
+    # --------------------------------------------------------------------------
+    # Capteur de présence temporisée : détection avec délai intégré
+    # Type attendu : binary_sensor.xxx (avec temporisation intégrée)
+    # Valeur attendue : on = présence détectée, off = absence prolongée
+    # --------------------------------------------------------------------------
     presence_sensor:
       name: Capteur de présence temporisée
       description: Le capteur binaire qui détecte la présence (avec temporisation intégrée)
@@ -13,6 +21,11 @@ blueprint:
         entity:
           domain: binary_sensor
 
+    # --------------------------------------------------------------------------
+    # Lumières à contrôler : interrupteurs switch
+    # Type attendu : switch.xxx (interrupteurs/télérupteurs)
+    # Valeur attendue : on = allumé, off = éteint
+    # --------------------------------------------------------------------------
     light_switches:
       name: Lumières à éteindre
       description: Sélectionnez les interrupteurs de lumières à contrôler
@@ -24,6 +37,12 @@ blueprint:
           domain: switch
           multiple: true
 
+    # --------------------------------------------------------------------------
+    # Tracker d'événements : suivi du déroulement de l'automation
+    # Type attendu : input_select.xxx (Helper > Dropdown)
+    # Valeur attendue : Options comme run, aborted_presence, lights_off
+    # Créer via UI : Settings > Helpers > Create Helper > Dropdown
+    # --------------------------------------------------------------------------
     automation_events_tracker:
       name: Tracker d'événements d'automation
       description: Input select pour suivre les événements de l'automation
@@ -32,6 +51,12 @@ blueprint:
         entity:
           domain: input_select
 
+    # --------------------------------------------------------------------------
+    # Délai de grâce : temps d'attente après allumage manuel
+    # Type attendu : input_number.xxx (Helper > Number)
+    # Valeur attendue : durée en secondes (recommandé : >= 40)
+    # Créer via UI : Settings > Helpers > Create Helper > Number
+    # --------------------------------------------------------------------------
     grace_period_on_light_on:
       name: Délai de grâce après allumage
       description: >
@@ -42,6 +67,12 @@ blueprint:
         entity:
           domain: input_number
 
+    # --------------------------------------------------------------------------
+    # Compteur d'extinctions : statistiques d'utilisation
+    # Type attendu : counter.xxx (Helper > Counter)
+    # Valeur attendue : nombre entier incrémental
+    # Créer via UI : Settings > Helpers > Create Helper > Counter
+    # --------------------------------------------------------------------------
     auto_off_counter:
       name: Compteur d'extinctions automatiques
       description: Entité counter qui compte le nombre de fois où l'automation a éteint les lumières
@@ -50,33 +81,57 @@ blueprint:
         entity:
           domain: counter
 
+# ==============================================================================
+# MODE RESTART : Redémarre l'automation si elle se déclenche pendant son exécution
+# ==============================================================================
 mode: restart
 max_exceeded: silent
 
+# ==============================================================================
+# TRIGGERS : Événements qui déclenchent l'automation
+# ==============================================================================
 trigger:
-  # Trigger 1 : Présence passe à OFF (existant)
+  # --------------------------------------------------------------------------
+  # Trigger 1 : Détection d'absence
+  # Se déclenche quand : le capteur de présence passe à off
+  # Objectif : lancer l'extinction des lumières après temporisation
+  # --------------------------------------------------------------------------
   - platform: state
     entity_id: !input presence_sensor
     to: "off"
     id: presence_off
 
-  # Trigger 2 : Lumière allumée alors que pas de présence
+  # --------------------------------------------------------------------------
+  # Trigger 2 : Allumage manuel pendant absence
+  # Se déclenche quand : une lumière est allumée alors qu'il n'y a pas de présence
+  # Objectif : éteindre automatiquement après un délai de grâce
+  # --------------------------------------------------------------------------
   - platform: state
     entity_id: !input light_switches
     to: "on"
     id: light_turned_on
 
+# ==============================================================================
+# CONDITION : Vérifications avant exécution
+# ==============================================================================
 condition:
   # Vérifie qu'au moins une lumière est allumée avant d'agir
+  # (évite de lancer l'automation inutilement)
   - condition: template
     value_template: >
       {% set switches = light_switches %}
       {{ switches | select('is_state', 'on') | list | count > 0 }}
 
+# ==============================================================================
+# VARIABLES : Préparation des données pour l'action
+# ==============================================================================
 variables:
   light_switches: !input light_switches
   grace_period_entity: !input grace_period_on_light_on
 
+# ==============================================================================
+# ACTION : Séquence d'extinction intelligente des lumières
+# ==============================================================================
 action:
   # État : démarrage
   - service: input_select.select_option

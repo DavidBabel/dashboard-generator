@@ -5,7 +5,15 @@ blueprint:
     lorsqu'un capteur devient inaccessible (pile faible, déconnexion, etc.).
     Notification de retour à la normale incluse.
   domain: automation
+  # ==============================================================================
+  # INPUTS - Configuration des paramètres du blueprint
+  # ==============================================================================
   input:
+    # --------------------------------------------------------------------------
+    # Détecteurs de présence : capteurs à surveiller
+    # Type attendu : binary_sensor.xxx (détecteurs Aqara ou similaires)
+    # Valeur attendue : on/off/unavailable (on = présence, unavailable = hors ligne)
+    # --------------------------------------------------------------------------
     capteurs:
       name: Détecteurs de présence
       description: Sélectionnez les détecteurs de présence Aqara à surveiller
@@ -16,6 +24,11 @@ blueprint:
           domain: binary_sensor
           multiple: true
 
+    # --------------------------------------------------------------------------
+    # Délai avant alerte : temps d'attente pour éviter les fausses alertes
+    # Type attendu : nombre entier
+    # Valeur attendue : durée en minutes (recommandé : 5)
+    # --------------------------------------------------------------------------
     delai_avant_alerte:
       name: Délai avant alerte
       description: Temps d'attente avant de déclencher l'alerte d'inaccessibilité (évite les fausses alertes)
@@ -26,6 +39,11 @@ blueprint:
           max: 30
           unit_of_measurement: minutes
 
+    # --------------------------------------------------------------------------
+    # Intervalle de rappel : fréquence des notifications répétitives
+    # Type attendu : nombre entier
+    # Valeur attendue : durée en minutes (recommandé : 30)
+    # --------------------------------------------------------------------------
     delai_rappel:
       name: Intervalle de rappel
       description: Temps entre deux notifications tant que le capteur est hors ligne
@@ -36,6 +54,10 @@ blueprint:
           max: 180
           unit_of_measurement: minutes
 
+    # --------------------------------------------------------------------------
+    # Device de notification : appareil mobile recevant les alertes
+    # Type attendu : device avec l'app mobile Home Assistant installée
+    # --------------------------------------------------------------------------
     notify_device:
       name: Device à notifier
       description: Le device doit utiliser l'application mobile officielle Home Assistant.
@@ -44,10 +66,21 @@ blueprint:
           filter:
             integration: mobile_app
 
+# ==============================================================================
+# MODE PARALLEL : Permet de surveiller plusieurs capteurs simultanément
+# ==============================================================================
 mode: parallel
 max: 10
 
+# ==============================================================================
+# TRIGGERS : Événements qui déclenchent l'automation
+# ==============================================================================
 trigger:
+  # --------------------------------------------------------------------------
+  # Trigger 1 : Capteur inaccessible
+  # Se déclenche quand : le capteur passe à unavailable pendant X minutes
+  # Objectif : détecter une panne ou batterie faible
+  # --------------------------------------------------------------------------
   - platform: state
     entity_id: !input capteurs
     to: "unavailable"
@@ -55,11 +88,19 @@ trigger:
       minutes: !input delai_avant_alerte
     id: alerte
 
+  # --------------------------------------------------------------------------
+  # Trigger 2 : Capteur de retour en ligne
+  # Se déclenche quand : le capteur sort de l'état unavailable
+  # Objectif : notifier le retour à la normale
+  # --------------------------------------------------------------------------
   - platform: state
     entity_id: !input capteurs
     from: "unavailable"
     id: retour
 
+# ==============================================================================
+# VARIABLES : Préparation des données pour les notifications
+# ==============================================================================
 variables:
   capteur: "{{ trigger.entity_id }}"
   nom: "{{ state_attr(trigger.entity_id, 'friendly_name') }}"

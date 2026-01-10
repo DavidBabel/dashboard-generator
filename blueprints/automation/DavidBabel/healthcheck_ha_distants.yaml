@@ -5,7 +5,16 @@ blueprint:
     Envoie une notification critique si l'état n'est plus "OK" avec rappel périodique.
     A ete créé pour le home assistant maitre uniquement
   domain: automation
+  # ==============================================================================
+  # INPUTS - Configuration des paramètres du blueprint
+  # ==============================================================================
   input:
+    # --------------------------------------------------------------------------
+    # Capteurs de Health Check : sensors Scrape surveillant l'état des serveurs
+    # Type attendu : sensor.xxx (créés via intégration Scrape)
+    # Valeur attendue : "OK" = en ligne, autre = problème
+    # Créer via : Configuration > Intégrations > Scrape
+    # --------------------------------------------------------------------------
     capteurs:
       name: Capteurs de Health check
       description: Sélectionne les entités Scrape (doivent renvoyer OK ou KO)
@@ -17,6 +26,11 @@ blueprint:
           domain: sensor
           multiple: true
 
+    # --------------------------------------------------------------------------
+    # Intervalle de rappel : fréquence des notifications répétitives
+    # Type attendu : nombre entier
+    # Valeur attendue : durée en minutes (recommandé : 10)
+    # --------------------------------------------------------------------------
     delai_rappel:
       name: Intervalle de rappel
       description: Temps entre deux notifications tant que le serveur est hors-ligne.
@@ -27,6 +41,10 @@ blueprint:
           max: 120
           unit_of_measurement: minutes
 
+    # --------------------------------------------------------------------------
+    # Device de notification : appareil mobile recevant les alertes
+    # Type attendu : device avec l'app mobile Home Assistant installée
+    # --------------------------------------------------------------------------
     notify_device:
       name: Device à notifier
       description: Le device doit utiliser l'application mobile officielle Home Assistant.
@@ -35,21 +53,40 @@ blueprint:
           filter:
             integration: mobile_app
 
+# ==============================================================================
+# MODE PARALLEL : Permet de surveiller plusieurs serveurs simultanément
+# ==============================================================================
 mode: parallel
 max: 10
 
+# ==============================================================================
+# TRIGGERS : Événements qui déclenchent l'automation
+# ==============================================================================
 trigger:
+  # --------------------------------------------------------------------------
+  # Trigger 1 : Serveur en panne (statut != OK)
+  # Se déclenche quand : l'état du sensor change et n'est plus "OK"
+  # Objectif : détecter immédiatement une panne de serveur
+  # --------------------------------------------------------------------------
   - platform: state
     entity_id: !input capteurs
     id: alerte
     # Déclenche si l'état change et n'est plus "OK"
     not_to: "OK"
 
+  # --------------------------------------------------------------------------
+  # Trigger 2 : Serveur rétabli (statut = OK)
+  # Se déclenche quand : l'état du sensor repasse à "OK"
+  # Objectif : notifier le retour à la normale
+  # --------------------------------------------------------------------------
   - platform: state
     entity_id: !input capteurs
     to: "OK"
     id: retour
 
+# ==============================================================================
+# VARIABLES : Préparation des données pour les notifications
+# ==============================================================================
 variables:
   capteur: "{{ trigger.entity_id }}"
   nom: "{{ state_attr(trigger.entity_id, 'friendly_name') }}"

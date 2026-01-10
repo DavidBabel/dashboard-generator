@@ -5,13 +5,26 @@ blueprint:
     protège contre valeurs invalides et micro-ajustements,
     puis force un recalcul du planning après stabilisation.
   domain: automation
+  # ==============================================================================
+  # INPUTS - Configuration des paramètres du blueprint
+  # ==============================================================================
   input:
+    # --------------------------------------------------------------------------
+    # Vanne physique : thermostat physique Danfoss Ally ou similaire
+    # Type attendu : climate.xxx (entité thermostat physique)
+    # Valeur attendue : température cible via attribut 'temperature'
+    # --------------------------------------------------------------------------
     valve_entity:
       name: Vanne Physique
       selector:
         entity:
           domain: climate
 
+    # --------------------------------------------------------------------------
+    # Versatile Thermostat (VT) : thermostat virtuel à synchroniser
+    # Type attendu : climate.xxx de l'intégration versatile_thermostat
+    # Valeur attendue : température cible via attribut 'temperature'
+    # --------------------------------------------------------------------------
     vt_entity:
       name: Versatile Thermostat (VT)
       selector:
@@ -19,12 +32,24 @@ blueprint:
           domain: climate
           integration: versatile_thermostat
 
+    # --------------------------------------------------------------------------
+    # Tracker d'événements : suivi de l'état de l'automation
+    # Type attendu : input_select.xxx (Helper > Dropdown)
+    # Valeur attendue : run, invalid_value, synced, waiting, reset, etc.
+    # Créer via UI : Settings > Helpers > Create Helper > Dropdown
+    # --------------------------------------------------------------------------
     event_entity:
       name: Automation Events (input_select)
       selector:
         entity:
           domain: input_select
 
+    # --------------------------------------------------------------------------
+    # Délai avant reset : durée d'attente avant recalcul du planning
+    # Type attendu : input_number.xxx (Helper > Number)
+    # Valeur attendue : durée en minutes
+    # Créer via UI : Settings > Helpers > Create Helper > Number
+    # --------------------------------------------------------------------------
     timer_entity:
       name: Délai avant reset (minutes)
       default: input_number.timer_reset_chauffage
@@ -32,6 +57,11 @@ blueprint:
         entity:
           domain: input_number
 
+    # --------------------------------------------------------------------------
+    # Hystérésis minimale : différence de température minimale pour agir
+    # Type attendu : nombre décimal
+    # Valeur attendue : température en °C (recommandé : 0.4)
+    # --------------------------------------------------------------------------
     hysteresis:
       name: Hystérésis minimale (°C)
       default: 0.4
@@ -41,10 +71,15 @@ blueprint:
           max: 5
           step: 0.1
 
+# ==============================================================================
+# MODE RESTART : Redémarre l'automation si un nouveau changement survient
+# ==============================================================================
 mode: restart
 max_exceeded: silent
 
-# Utilisation des variables après le trigger pour une stabilité maximale
+# ==============================================================================
+# VARIABLES : Préparation des données (définies après trigger pour stabilité)
+# ==============================================================================
 variables:
   valve: !input valve_entity
   vt: !input vt_entity
@@ -52,7 +87,15 @@ variables:
   timer: !input timer_entity
   hysteresis_val: !input hysteresis
 
+# ==============================================================================
+# TRIGGER : Changement de température sur la vanne physique
+# ==============================================================================
 trigger:
+  # --------------------------------------------------------------------------
+  # Trigger : Modification de la température cible sur la vanne
+  # Se déclenche quand : l'attribut 'temperature' change (après 10s de stabilité)
+  # Objectif : détecter un réglage manuel pour synchroniser le VT
+  # --------------------------------------------------------------------------
   - platform: state
     entity_id: !input valve_entity
     attribute: temperature

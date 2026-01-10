@@ -8,7 +8,16 @@ blueprint:
     si elle est correctement installée sur le radiateur. Ce blueprint surveille cet état
     et vous prévient en cas de problème.
   domain: automation
+  # ==============================================================================
+  # INPUTS - Configuration des paramètres du blueprint
+  # ==============================================================================
   input:
+    # --------------------------------------------------------------------------
+    # Vanne Danfoss Ally : sensor de détection de montage
+    # Type attendu : binary_sensor.xxx_mounted_mode_active
+    # Valeur attendue : on = montée, off = démontée, unavailable = hors ligne
+    # Trouver via : Outils de développement > États > rechercher "mounted"
+    # --------------------------------------------------------------------------
     vanne_entity:
       name: Vanne Danfoss Ally
       description: >
@@ -19,6 +28,11 @@ blueprint:
         entity:
           domain: binary_sensor
 
+    # --------------------------------------------------------------------------
+    # Nom de la vanne : identification pour les notifications
+    # Type attendu : texte libre
+    # Valeur attendue : nom de la pièce ou du radiateur (ex: "Salon", "Chambre")
+    # --------------------------------------------------------------------------
     vanne_name:
       name: Nom de la vanne
       description: Nom de la pièce ou du radiateur pour personnaliser les notifications (ex. "Salon", "Chambre parentale")
@@ -26,6 +40,10 @@ blueprint:
       selector:
         text:
 
+    # --------------------------------------------------------------------------
+    # Device de notification : appareil mobile recevant les alertes critiques
+    # Type attendu : device avec l'app mobile Home Assistant installée
+    # --------------------------------------------------------------------------
     notify_device:
       name: Device à notifier
       description: >
@@ -36,6 +54,11 @@ blueprint:
           filter:
             integration: mobile_app
 
+    # --------------------------------------------------------------------------
+    # Vérifier l'inaccessibilité : activer l'alerte pour vanne hors ligne
+    # Type attendu : booléen
+    # Valeur attendue : true = surveiller aussi l'inaccessibilité, false = ignorer
+    # --------------------------------------------------------------------------
     check_unavailable:
       name: Vérifier l'inaccessibilité
       description: >
@@ -45,6 +68,11 @@ blueprint:
       selector:
         boolean:
 
+    # --------------------------------------------------------------------------
+    # Délai avant alerte d'inaccessibilité : temps d'attente pour éviter fausses alertes
+    # Type attendu : nombre entier
+    # Valeur attendue : durée en minutes (recommandé : 5)
+    # --------------------------------------------------------------------------
     unavailable_delay:
       name: Délai avant alerte d'inaccessibilité
       description: Temps d'attente avant de considérer que la vanne est réellement hors ligne (évite les fausses alertes)
@@ -55,6 +83,11 @@ blueprint:
           max: 60
           unit_of_measurement: minutes
 
+    # --------------------------------------------------------------------------
+    # Activer les notifications : permet de désactiver temporairement les alertes
+    # Type attendu : booléen
+    # Valeur attendue : true = notifications activées, false = désactivées
+    # --------------------------------------------------------------------------
     enable_notification:
       name: Activer les notifications
       description: Désactiver temporairement les notifications sans supprimer l'automatisation
@@ -62,17 +95,31 @@ blueprint:
       selector:
         boolean:
 
+# ==============================================================================
+# MODE SINGLE : Une seule exécution à la fois (notifications uniques)
+# ==============================================================================
 mode: single
 max_exceeded: silent
 
+# ==============================================================================
+# TRIGGERS : Événements qui déclenchent l'automation
+# ==============================================================================
 trigger:
-  # Déclencheur 1 : La vanne n'est plus montée (mounted_mode_active passe à OFF)
+  # --------------------------------------------------------------------------
+  # Trigger 1 : Vanne débranchée/dévissée
+  # Se déclenche quand : mounted_mode_active passe à off
+  # Objectif : détecter que la vanne n'est plus montée sur le radiateur
+  # --------------------------------------------------------------------------
   - platform: state
     entity_id: !input vanne_entity
     to: "off"
     id: unmounted
 
-  # Déclencheur 2 : La vanne devient inaccessible (optionnel)
+  # --------------------------------------------------------------------------
+  # Trigger 2 : Vanne inaccessible (optionnel)
+  # Se déclenche quand : la vanne devient unavailable pendant X minutes
+  # Objectif : détecter une panne de pile ou de connexion Zigbee
+  # --------------------------------------------------------------------------
   - platform: state
     entity_id: !input vanne_entity
     to: "unavailable"
@@ -80,10 +127,16 @@ trigger:
       minutes: !input unavailable_delay
     id: unavailable
 
+# ==============================================================================
+# CONDITION : Vérifications avant exécution
+# ==============================================================================
 condition:
   - condition: template
     value_template: !input enable_notification
 
+# ==============================================================================
+# VARIABLES : Préparation des données pour les notifications
+# ==============================================================================
 variables:
   vanne_name: !input vanne_name
   unavailable_delay: !input unavailable_delay

@@ -4,7 +4,15 @@ blueprint:
     Alerte critique avec rappel périodique et notification de retour à la normale.
     Compatible iOS (critique) et Android. Anti-spam intégré.
   domain: automation
+  # ==============================================================================
+  # INPUTS - Configuration des paramètres du blueprint
+  # ==============================================================================
   input:
+    # --------------------------------------------------------------------------
+    # Capteurs de danger : détecteurs de fuite d'eau, fumée, gaz, etc.
+    # Type attendu : binary_sensor.xxx (détecteurs de sécurité)
+    # Valeur attendue : on = danger détecté, off = normal
+    # --------------------------------------------------------------------------
     capteurs:
       name: Capteurs de danger
       description: Sélectionne un ou plusieurs capteurs (eau, fumée, gaz, etc.)
@@ -22,6 +30,11 @@ blueprint:
           domain: binary_sensor
           multiple: true
 
+    # --------------------------------------------------------------------------
+    # Intervalle de rappel : fréquence des alertes répétitives
+    # Type attendu : nombre entier
+    # Valeur attendue : durée en minutes (recommandé : 10)
+    # --------------------------------------------------------------------------
     delai_rappel:
       name: Intervalle de rappel
       description: Temps entre deux notifications tant que le danger persiste
@@ -32,6 +45,10 @@ blueprint:
           max: 60
           unit_of_measurement: minutes
 
+    # --------------------------------------------------------------------------
+    # Device de notification : appareil mobile recevant les alertes critiques
+    # Type attendu : device avec l'app mobile Home Assistant installée
+    # --------------------------------------------------------------------------
     notify_device:
       name: Device à notifier
       description: >
@@ -41,20 +58,39 @@ blueprint:
           filter:
             integration: mobile_app
 
+# ==============================================================================
+# MODE PARALLEL : Permet de gérer plusieurs alertes simultanément
+# ==============================================================================
 mode: parallel
 max: 10
 
+# ==============================================================================
+# TRIGGERS : Événements qui déclenchent l'automation
+# ==============================================================================
 trigger:
+  # --------------------------------------------------------------------------
+  # Trigger 1 : Danger détecté (capteur passe à on)
+  # Se déclenche quand : fuite d'eau, fumée, ou autre danger détecté
+  # Objectif : lancer immédiatement les alertes critiques répétitives
+  # --------------------------------------------------------------------------
   - platform: state
     entity_id: !input capteurs
     to: "on"
     id: alerte
 
+  # --------------------------------------------------------------------------
+  # Trigger 2 : Retour à la normale (capteur passe à off)
+  # Se déclenche quand : le danger est écarté
+  # Objectif : notifier que la situation est revenue à la normale
+  # --------------------------------------------------------------------------
   - platform: state
     entity_id: !input capteurs
     to: "off"
     id: retour
 
+# ==============================================================================
+# VARIABLES : Préparation des données pour les notifications
+# ==============================================================================
 variables:
   capteur: "{{ trigger.entity_id }}"
   nom: "{{ state_attr(trigger.entity_id, 'friendly_name') }}"

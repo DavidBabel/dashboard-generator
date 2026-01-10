@@ -75,6 +75,100 @@ input:
   # ❌ Pas de default !
 ```
 
+### 3. 📝 RÈGLE : Commentaires et Documentation Détaillés
+
+**Tous les blueprints DOIVENT contenir des commentaires détaillés** pour faciliter la maintenance et la compréhension :
+
+#### Structure des commentaires obligatoires :
+
+```yaml
+# ==============================================================================
+# SECTION PRINCIPALE (INPUTS, VARIABLES, TRIGGERS, ACTIONS, etc.)
+# ==============================================================================
+
+# --------------------------------------------------------------------------
+# Sous-section : Description du composant
+# Type attendu : sensor.xxx, input_number.xxx, etc.
+# Valeur attendue : pourcentage, température, état, etc.
+# Comment créer : Instructions si nécessaire (Helper, configuration.yaml)
+# --------------------------------------------------------------------------
+```
+
+#### Commentaires requis pour chaque input :
+
+```yaml
+input:
+  # --------------------------------------------------------------------------
+  # Nom descriptif de l'input
+  # Type attendu : Préciser le domain et le format (sensor.xxx, binary_sensor.xxx)
+  # Valeur attendue : Préciser l'unité et la plage (0-100%, température en °C)
+  # Création : Si helper nécessaire, expliquer comment le créer
+  # --------------------------------------------------------------------------
+  mon_input:
+    name: Nom Convivial
+    description: >
+      Description détaillée avec exemples concrets
+    default: sensor.exemple_par_defaut
+    selector:
+      entity:
+        domain: sensor
+```
+
+#### Commentaires requis pour les triggers :
+
+Chaque trigger doit expliquer :
+
+- **Quand** il se déclenche
+- **Pourquoi** il existe
+- **Quelle logique** il implémente
+
+```yaml
+trigger:
+  # --------------------------------------------------------------------------
+  # Trigger 1 : Nom descriptif
+  # Se déclenche quand : condition exacte
+  # Objectif : expliquer pourquoi ce trigger existe
+  # --------------------------------------------------------------------------
+  - platform: state
+    entity_id: sensor.exemple
+    id: mon_trigger
+```
+
+#### Commentaires requis pour les actions :
+
+Chaque scénario d'action doit expliquer :
+
+- **Dans quel cas** il s'exécute
+- **Quelle logique** il implémente
+- **Quelles conditions** sont vérifiées
+
+```yaml
+action:
+  - choose:
+      # ------------------------------------------------------------------------
+      # SCÉNARIO 1 : Description du cas d'usage
+      # Se déclenche quand : conditions exactes
+      # Objectif : expliquer ce que fait ce scénario
+      # ------------------------------------------------------------------------
+      - conditions:
+          - condition: trigger
+            id: mon_trigger
+        sequence:
+          - service: notify.mobile_app
+            # Action commentée si nécessaire
+```
+
+✅ **EXEMPLE COMPLET DE RÉFÉRENCE :**
+
+Voir [`warning_nobody_detected_for_long.yaml`](blueprints/automation/DavidBabel/warning_nobody_detected_for_long.yaml) pour un exemple complet de blueprint bien commenté.
+
+**Bénéfices :**
+
+- ✅ Maintenance facilitée
+- ✅ Compréhension immédiate du fonctionnement
+- ✅ Onboarding rapide pour nouveaux contributeurs
+- ✅ Documentation technique intégrée au code
+
 ---
 
 ## 📱 Standard de Notification
@@ -293,6 +387,7 @@ Avant de proposer un blueprint :
 4. ✅ La description est claire et complète
 5. ✅ Le mode d'exécution est approprié
 6. ✅ Les emojis sont utilisés pour la lisibilité
+7. ✅ **Les commentaires détaillés sont présents** (sections, inputs, triggers, actions)
 
 ---
 
@@ -312,10 +407,10 @@ Toute modification doit donc être :
 
 Pour créer un nouveau blueprint, s'inspirer des blueprints existants :
 
-- [`alerts.yaml`](blueprints/automation/DavidBabel/alerts.yaml) - Alertes critiques avec rappel
+- [`security_alerts.yaml`](blueprints/automation/DavidBabel/security_alerts.yaml) - Alertes critiques avec rappel
 - [`batteries_check.yaml`](blueprints/automation/DavidBabel/batteries_check.yaml) - Vérification périodique
-- [`ha_healthcheck.yaml`](blueprints/automation/DavidBabel/ha_healthcheck.yaml) - Monitoring système
-- [`presence_detection.yaml`](blueprints/automation/DavidBabel/presence_detection.yaml) - Logique complexe
+- [`warning_nobody_detected_for_long.yaml`](blueprints/automation/DavidBabel/warning_nobody_detected_for_long.yaml) - Exemple de référence pour les commentaires détaillés
+- [`healthcheck_ha_distants.yaml`](blueprints/automation/DavidBabel/healthcheck_ha_distants.yaml) - Monitoring système
 
 ---
 

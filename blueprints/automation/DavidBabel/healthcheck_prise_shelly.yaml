@@ -4,7 +4,15 @@ blueprint:
     Envoie une alerte lorsqu'une prise Shelly est hors ligne pendant une durée configurable
     et notifie quand elle revient en ligne.
   domain: automation
+  # ==============================================================================
+  # INPUTS - Configuration des paramètres du blueprint
+  # ==============================================================================
   input:
+    # --------------------------------------------------------------------------
+    # Capteur de connexion : sensor indiquant l'état de la prise
+    # Type attendu : binary_sensor.xxx (créé pour surveiller la prise Shelly)
+    # Valeur attendue : on = connectée, off = hors ligne
+    # --------------------------------------------------------------------------
     device_sensor:
       name: Capteur de connexion
       description: Le capteur binaire qui indique l'état de connexion de la prise Shelly
@@ -12,6 +20,12 @@ blueprint:
       selector:
         entity:
           domain: binary_sensor
+
+    # --------------------------------------------------------------------------
+    # Appartement : identification du site concerné
+    # Type attendu : sélection parmi les options définies
+    # Valeur attendue : nom d'appartement
+    # --------------------------------------------------------------------------
     appartement:
       name: Appartement
       description: Sélectionnez l'appartement concerné
@@ -22,6 +36,12 @@ blueprint:
             - "Engel"
             - "Romains"
             - "Carmes"
+
+    # --------------------------------------------------------------------------
+    # Durée hors ligne : délai avant déclenchement de l'alerte
+    # Type attendu : nombre entier
+    # Valeur attendue : durée en minutes (recommandé : 10)
+    # --------------------------------------------------------------------------
     offline_duration:
       name: Durée hors ligne avant alerte
       description: Temps d'attente avant d'envoyer l'alerte de déconnexion
@@ -40,8 +60,14 @@ blueprint:
           filter:
             integration: mobile_app
 
+# ==============================================================================
+# MODE RESTART : Redémarre l'automation si elle se déclenche pendant son exécution
+# ==============================================================================
 mode: restart
 
+# ==============================================================================
+# VARIABLES : Préparation des données pour les notifications
+# ==============================================================================
 variables:
   appartement: !input appartement
   notify_device: !input notify_device
@@ -54,13 +80,27 @@ variables:
   notification_tag: "alerte_shelly_{{ appartement | lower }}"
   offline_duration: !input offline_duration
 
+# ==============================================================================
+# TRIGGERS : Événements qui déclenchent l'automation
+# ==============================================================================
 trigger:
+  # --------------------------------------------------------------------------
+  # Trigger 1 : Prise débranchée (hors ligne)
+  # Se déclenche quand : la prise est off pendant X minutes
+  # Objectif : détecter une panne ou une déconnexion
+  # --------------------------------------------------------------------------
   - platform: state
     entity_id: !input device_sensor
     to: "off"
     for:
       minutes: !input offline_duration
     id: debranche
+
+  # --------------------------------------------------------------------------
+  # Trigger 2 : Prise rebranchée (retour en ligne)
+  # Se déclenche quand : la prise repasse de off à on
+  # Objectif : notifier le retour à la normale
+  # --------------------------------------------------------------------------
   - platform: state
     entity_id: !input device_sensor
     from: "off"
