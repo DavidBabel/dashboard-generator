@@ -1,13 +1,12 @@
-# Version: 1.0.2
+# Version: 1.1.1
 # Appartement: Tous
 blueprint:
   name: "🕵️ Beacon abandonné dans l'appartement"
   description: >
-    Version: 1.0.2
-    Bascule en Frost si le beacon est immobile. Analyse via Ratio Stats.
+    Version: 1.1.1
+    Désactive complètement le chauffage (OFF) si le beacon est immobile.
+    Le scheduler VT est suspendu pendant l'arrêt.
   domain: automation
-  # TODO a changer vers "desactiver le chauffage" plutot que "frost"
-
   # ==============================================================================
   # INPUTS - Configuration des paramètres du blueprint
   # ==============================================================================
@@ -40,9 +39,9 @@ blueprint:
           domain: input_number
 
     # --------------------------------------------------------------------------
-    # Thermostat cible : VT à basculer en mode hors-gel
+    # Thermostat cible : VT à basculer en OFF
     # Type attendu : climate.xxx de l'intégration versatile_thermostat
-    # Valeur attendue : entité climat avec support preset_mode = frost
+    # Valeur attendue : entité climat avec hvac_mode = heat / off
     # --------------------------------------------------------------------------
     target_thermostat:
       name: Versatile Thermostat
@@ -61,8 +60,8 @@ blueprint:
       selector:
         select:
           options:
-            - Romains
-            - Engel
+            - 🟧 Engel
+            - 🟩 Romains
 
     # --------------------------------------------------------------------------
     # URL du dashboard : lien vers la chambre concernée
@@ -97,7 +96,6 @@ blueprint:
 
     # --------------------------------------------------------------------------
     # Device de notification : appareil mobile recevant les alertes
-    # Type attendu : device avec l'app mobile Home Assistant installée
     # --------------------------------------------------------------------------
     notify_device:
       name: Device à notifier
@@ -126,54 +124,47 @@ variables:
       | replace('-', '_') }}
 
 # ==============================================================================
-# TRIGGER : Vérification périodique toutes les 3 heures
+# TRIGGERS : Vérification périodique
 # ==============================================================================
 trigger:
-  # --------------------------------------------------------------------------
-  # Trigger : Vérification automatique
-  # Se déclenche quand : toutes les 3 heures
-  # Objectif : détecter un beacon oublié (présence prolongée anormale)
-  # --------------------------------------------------------------------------
+  # Vérification automatique toutes les 3 heures
   - platform: time_pattern
+    id: check
     hours: "/3"
 
 # ==============================================================================
-# CONDITIONS : Vérifications avant d'exécuter l'action
+# ACTIONS
 # ==============================================================================
-condition:
-  # 1. Capteur de stats valide
-  - condition: template
-    value_template: "{{ states(ratio_ent) not in ['unknown', 'unavailable', ''] }}"
-
-  # 2. Ratio >= seuil
-  - condition: template
-    value_template: >
-      {% set ratio = states(ratio_ent) | float(0) %}
-      {% set seuil = states(seuil_ent) | float(95) / 100 %}
-      {{ ratio >= seuil }}
-
-  # 3. Thermostat pas déjà en hors-gel
-  - condition: template
-    value_template: >
-      {{ state_attr(thermostat_ent, 'preset_mode') != 'frost' }}
-
 action:
-  - service: climate.set_preset_mode
-    target:
-      entity_id: !input target_thermostat
-    data:
-      preset_mode: frost
+  - choose:
+      # ----------------------------------------------------------------------
+      # CAS 1 : Beacon immobile → OFF chauffage
+      # ----------------------------------------------------------------------
+      - conditions:
+          - condition: trigger
+            id: check
+          - condition: template
+            value_template: "{{ states(ratio_ent) not in ['unknown', 'unavailable', ''] }}"
+          - condition: template
+            value_template: >
+              {% set ratio = states(ratio_ent) | float(0) %}
+              {% set seuil = states(seuil_ent) | float(95) / 100 %}
+              {{ ratio >= seuil }}
+          - condition: template
+            value_template: "{{ state_attr(thermostat_ent, 'hvac_mode') != 'off' }}"
+        sequence:
+          - service: climate.set_hvac_mode
+            target:
+              entity_id: !input target_thermostat
+            data:
+              hvac_mode: off
 
-  - service: "{{ notify_service }}"
-    data:
-      title: "🔥 Présence prolongée {{ site }}"
-      message: >
-        {% set path = url_val[1:] if url_val.startswith('/') else url_val %}
-        {% set room = (path.split('/')[-1]) | replace('-', ' ') | replace('_', ' ') %}
-        Présence détectée à {{ (states(ratio_ent)|float * 100)|round(1) }} % dans {{ room }}.
-      data:
-        notification_icon: mdi:home-thermometer
-        icon: mdi:snowflake-alert
-        color: "#FFA500"
-        clickAction: !input dashboard_url
-        url: !input dashboard_url
+          - service: "{{ notify_service }}"
+            data:
+              title: "🔥 Présence prolongée {{ site }}"
+              message: >
+                Beacon immobile → Chauffage désactivé (OFF). Scheduler VT suspendu.
+              data:
+                icon: mdi:snowflake-alert
+                clickAction: !input dashboard_url
+                url: !input dashboard_url
