@@ -1,9 +1,9 @@
-# Version: 1.1.7
+# Version: 1.1.8
 # Appartement: Tous
 blueprint:
   name: "🕵️ Beacon abandonné dans l'appartement"
   description: >
-    Version: 1.1.7
+    Version: 1.1.8
     Désactive complètement le chauffage (preset frost) si le beacon est immobile.
     Le scheduler VT est suspendu pendant l'arrêt.
   domain: automation
@@ -162,9 +162,8 @@ action:
             data:
               title: "📶 Beacon {{ site }}"
               message: >
-                📍 {{ chambre_nom }}
+                📍 {{ chambre_nom }} Beacon Abandonné
                 🔒 Chauffage passé en mode Frost
-                ⏸️ Scheduler VT suspendu
               data:
                 icon: mdi:snowflake-alert
                 clickAction: !input dashboard_url
