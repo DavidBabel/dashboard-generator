@@ -1,9 +1,9 @@
-# Version: 1.1.3
+# Version: 1.1.4
 # Appartement: Tous
 blueprint:
   name: "🕵️ Beacon abandonné dans l'appartement"
   description: >
-    Version: 1.1.3
+    Version: 1.1.4
     Désactive complètement le chauffage (OFF) si le beacon est immobile.
     Le scheduler VT est suspendu pendant l'arrêt.
   domain: automation
@@ -145,8 +145,8 @@ action:
         📏 Seuil entity: {{ seuil_ent }} = {{ states(seuil_ent) }}%
         🌡️ Thermostat: {{ thermostat_ent }} mode={{ state_attr(thermostat_ent, 'hvac_mode') }}
         🧮 Ratio calculé: {{ states(ratio_ent) | float(0) }}
-        🎯 Seuil calculé: {{ states(seuil_ent) | float(95) / 100 }}
-        ✅ Ratio >= Seuil ? {{ states(ratio_ent) | float(0) >= (states(seuil_ent) | float(95) / 100) }}
+        🎯 Seuil calculé: {{ states(seuil_ent) | float(95) }}
+        ✅ Ratio >= Seuil ? {{ states(ratio_ent) | float(0) >= states(seuil_ent) | float(95) }}
       level: warning
 
   - choose:
@@ -159,7 +159,7 @@ action:
           - condition: template
             value_template: >
               {% set ratio = states(ratio_ent) | float(0) %}
-              {% set seuil = states(seuil_ent) | float(95) / 100 %}
+              {% set seuil = states(seuil_ent) | float(95) %}
               {{ ratio >= seuil }}
           - condition: template
             value_template: "{{ state_attr(thermostat_ent, 'hvac_mode') != 'off' }}"
