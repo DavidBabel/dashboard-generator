@@ -1,9 +1,9 @@
-# Version: 1.1.1
+# Version: 1.1.2
 # Appartement: Tous
 blueprint:
   name: "🕵️ Beacon abandonné dans l'appartement"
   description: >
-    Version: 1.1.1
+    Version: 1.1.2
     Désactive complètement le chauffage (OFF) si le beacon est immobile.
     Le scheduler VT est suspendu pendant l'arrêt.
   domain: automation
@@ -136,6 +136,19 @@ trigger:
 # ACTIONS
 # ==============================================================================
 action:
+  # 🐛 DEBUG : Log des valeurs au démarrage
+  - service: system_log.write
+    data:
+      message: >
+        🐛 [BEACON DEBUG] Démarrage automation
+        📊 Ratio sensor: {{ ratio_ent }} = {{ states(ratio_ent) }}
+        📏 Seuil entity: {{ seuil_ent }} = {{ states(seuil_ent) }}%
+        🌡️ Thermostat: {{ thermostat_ent }} mode={{ state_attr(thermostat_ent, 'hvac_mode') }}
+        🧮 Ratio calculé: {{ states(ratio_ent) | float(0) }}
+        🎯 Seuil calculé: {{ states(seuil_ent) | float(95) / 100 }}
+        ✅ Ratio >= Seuil ? {{ states(ratio_ent) | float(0) >= (states(seuil_ent) | float(95) / 100) }}
+      level: warning
+
   - choose:
       # ----------------------------------------------------------------------
       # CAS 1 : Beacon immobile → OFF chauffage
@@ -153,6 +166,13 @@ action:
           - condition: template
             value_template: "{{ state_attr(thermostat_ent, 'hvac_mode') != 'off' }}"
         sequence:
+          # 🐛 DEBUG : Conditions validées
+          - service: system_log.write
+            data:
+              message: >
+                🐛 [BEACON DEBUG] ✅ Toutes les conditions validées ! Extinction du chauffage...
+              level: warning
+
           - service: climate.set_hvac_mode
             target:
               entity_id: !input target_thermostat
@@ -168,3 +188,10 @@ action:
                 icon: mdi:snowflake-alert
                 clickAction: !input dashboard_url
                 url: !input dashboard_url
+    default:
+      # 🐛 DEBUG : Aucune condition validée
+      - service: system_log.write
+        data:
+          message: >
+            🐛 [BEACON DEBUG] ❌ Conditions non validées - automation arrêtée
+          level: warning
