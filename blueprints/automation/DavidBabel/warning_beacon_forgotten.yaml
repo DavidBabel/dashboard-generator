@@ -1,9 +1,9 @@
-# Version: 1.1.6
+# Version: 1.1.7
 # Appartement: Tous
 blueprint:
   name: "🕵️ Beacon abandonné dans l'appartement"
   description: >
-    Version: 1.1.6
+    Version: 1.1.7
     Désactive complètement le chauffage (preset frost) si le beacon est immobile.
     Le scheduler VT est suspendu pendant l'arrêt.
   domain: automation
@@ -116,6 +116,15 @@ variables:
   site: !input site_name
   url_val: !input dashboard_url
 
+  # Extraction du nom de la chambre depuis l'URL
+  chambre_nom: >
+    {% set url = url_val %}
+    {% set parts = url.split('/') %}
+    {% set chambre = parts[-1] if parts|length > 0 else '' %}
+    {% set mots = chambre.replace('-', ' ').split(' ') %}
+    {% set formatted = mots | map('capitalize') | join(' ') %}
+    {{ formatted }}
+
   notify_device: !input notify_device
   notify_service: >
     notify.mobile_app_{{ device_attr(notify_device, 'name')
@@ -130,28 +139,15 @@ trigger:
   # Vérification automatique toutes les 3 heures
   - platform: time_pattern
     id: check
-    hours: "/3"
+    hours: "/1"
 
 # ==============================================================================
 # ACTIONS
 # ==============================================================================
 action:
-  # 🐛 DEBUG : Log des valeurs au démarrage
-  - service: system_log.write
-    data:
-      message: >
-        🐛 [BEACON DEBUG] Démarrage automation
-        📊 Ratio sensor: {{ ratio_ent }} = {{ states(ratio_ent) }}
-        📏 Seuil entity: {{ seuil_ent }} = {{ states(seuil_ent) }}%
-        🌡️ Thermostat: {{ thermostat_ent }} preset={{ state_attr(thermostat_ent, 'preset_mode') }}
-        🧮 Ratio calculé: {{ states(ratio_ent) | float(0) }}
-        🎯 Seuil calculé: {{ states(seuil_ent) | float(95) }}
-        ✅ Ratio >= Seuil ? {{ states(ratio_ent) | float(0) >= states(seuil_ent) | float(95) }}
-      level: warning
-
   - choose:
       # ----------------------------------------------------------------------
-      # CAS 1 : Beacon immobile → OFF chauffage
+      # CAS 1 : Beacon immobile → Passage en frost
       # ----------------------------------------------------------------------
       - conditions:
           - condition: template
@@ -161,21 +157,14 @@ action:
               {% set ratio = states(ratio_ent) | float(0) %}
               {% set seuil = states(seuil_ent) | float(95) %}
               {{ ratio >= seuil }}
-          - condition: template
-            value_template: "{{ state_attr(thermostat_ent, 'preset_mode') != 'frost' }}"
         sequence:
-          # 🐛 DEBUG : Conditions validées
-          - service: system_log.write
-            data:
-              message: >
-                🐛 [BEACON DEBUG] ✅ Toutes les conditions validées ! Passage en frost...
-              level: warning
-
           - service: "{{ notify_service }}"
             data:
-              title: "🔥 Présence prolongée {{ site }}"
+              title: "📶 Beacon {{ site }}"
               message: >
-                Beacon immobile → Chauffage en mode frost. Scheduler VT suspendu.
+                📍 {{ chambre_nom }}
+                🔒 Chauffage passé en mode Frost
+                ⏸️ Scheduler VT suspendu
               data:
                 icon: mdi:snowflake-alert
                 clickAction: !input dashboard_url
@@ -186,11 +175,3 @@ action:
               entity_id: !input target_thermostat
             data:
               preset_mode: frost
-
-    default:
-      # 🐛 DEBUG : Aucune condition validée
-      - service: system_log.write
-        data:
-          message: >
-            🐛 [BEACON DEBUG] ❌ Conditions non validées - automation arrêtée
-          level: warning

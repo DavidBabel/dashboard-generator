@@ -5,7 +5,7 @@
 ✅ healthcheck_prise_shelly.yaml
 ✅ batteries_check.yaml
 ✅ security_alerts.yaml
-warning_beacon_forgotten.yaml
+⚠️ warning_beacon_forgotten.yaml // ⚠️ does not cut off the heating
 warning_danfoss_ally_unplug.yaml
 smart_heating_reset.yaml
-⚠️ warning_nobody_detected_for_long.yaml // not working yet
+⚠️ warning_nobody_detected_for_long.yaml // ⚠️ not working yet
