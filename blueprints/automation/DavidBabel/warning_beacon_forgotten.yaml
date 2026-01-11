@@ -1,9 +1,9 @@
-# Version: 1.1.4
+# Version: 1.1.5
 # Appartement: Tous
 blueprint:
   name: "🕵️ Beacon abandonné dans l'appartement"
   description: >
-    Version: 1.1.4
+    Version: 1.1.5
     Désactive complètement le chauffage (OFF) si le beacon est immobile.
     Le scheduler VT est suspendu pendant l'arrêt.
   domain: automation
@@ -175,7 +175,7 @@ action:
             target:
               entity_id: !input target_thermostat
             data:
-              hvac_mode: off
+              hvac_mode: "off"
 
           - service: "{{ notify_service }}"
             data:
