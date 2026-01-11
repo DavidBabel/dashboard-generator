@@ -1,10 +1,10 @@
-# Version: 1.1.5
+# Version: 1.1.6
 # Appartement: Tous
 blueprint:
   name: "🕵️ Beacon abandonné dans l'appartement"
   description: >
-    Version: 1.1.5
-    Désactive complètement le chauffage (OFF) si le beacon est immobile.
+    Version: 1.1.6
+    Désactive complètement le chauffage (preset frost) si le beacon est immobile.
     Le scheduler VT est suspendu pendant l'arrêt.
   domain: automation
   # ==============================================================================
@@ -39,9 +39,9 @@ blueprint:
           domain: input_number
 
     # --------------------------------------------------------------------------
-    # Thermostat cible : VT à basculer en OFF
+    # Thermostat cible : VT à basculer en frost
     # Type attendu : climate.xxx de l'intégration versatile_thermostat
-    # Valeur attendue : entité climat avec hvac_mode = heat / off
+    # Valeur attendue : entité climat avec preset_mode = comfort / frost
     # --------------------------------------------------------------------------
     target_thermostat:
       name: Versatile Thermostat
@@ -143,7 +143,7 @@ action:
         🐛 [BEACON DEBUG] Démarrage automation
         📊 Ratio sensor: {{ ratio_ent }} = {{ states(ratio_ent) }}
         📏 Seuil entity: {{ seuil_ent }} = {{ states(seuil_ent) }}%
-        🌡️ Thermostat: {{ thermostat_ent }} mode={{ state_attr(thermostat_ent, 'hvac_mode') }}
+        🌡️ Thermostat: {{ thermostat_ent }} preset={{ state_attr(thermostat_ent, 'preset_mode') }}
         🧮 Ratio calculé: {{ states(ratio_ent) | float(0) }}
         🎯 Seuil calculé: {{ states(seuil_ent) | float(95) }}
         ✅ Ratio >= Seuil ? {{ states(ratio_ent) | float(0) >= states(seuil_ent) | float(95) }}
@@ -162,30 +162,31 @@ action:
               {% set seuil = states(seuil_ent) | float(95) %}
               {{ ratio >= seuil }}
           - condition: template
-            value_template: "{{ state_attr(thermostat_ent, 'hvac_mode') != 'off' }}"
+            value_template: "{{ state_attr(thermostat_ent, 'preset_mode') != 'frost' }}"
         sequence:
           # 🐛 DEBUG : Conditions validées
           - service: system_log.write
             data:
               message: >
-                🐛 [BEACON DEBUG] ✅ Toutes les conditions validées ! Extinction du chauffage...
+                🐛 [BEACON DEBUG] ✅ Toutes les conditions validées ! Passage en frost...
               level: warning
-
-          - service: climate.set_hvac_mode
-            target:
-              entity_id: !input target_thermostat
-            data:
-              hvac_mode: "off"
 
           - service: "{{ notify_service }}"
             data:
               title: "🔥 Présence prolongée {{ site }}"
               message: >
-                Beacon immobile → Chauffage désactivé (OFF). Scheduler VT suspendu.
+                Beacon immobile → Chauffage en mode frost. Scheduler VT suspendu.
               data:
                 icon: mdi:snowflake-alert
                 clickAction: !input dashboard_url
                 url: !input dashboard_url
+
+          - service: climate.set_preset_mode
+            target:
+              entity_id: !input target_thermostat
+            data:
+              preset_mode: frost
+
     default:
       # 🐛 DEBUG : Aucune condition validée
       - service: system_log.write
