@@ -18,8 +18,8 @@ for file in "$BLUEPRINTS_DIR"/*.yaml; do
     if [ -f "$file" ]; then
         filename=$(basename "$file")
 
-        # Lire la deuxième ligne pour extraire la catégorie
-        category=$(sed -n '2p' "$file" | grep -o "# Appartement:.*" | sed 's/# Appartement: *//')
+        # Lire la troisième ligne pour extraire la catégorie
+        category=$(sed -n '3p' "$file" | grep -o "# Appartement:.*" | sed 's/# Appartement: *//')
 
         # Si pas de catégorie trouvée, mettre "Autre"
         if [ -z "$category" ]; then

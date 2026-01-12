@@ -1,9 +1,10 @@
-# Version: 1.1.1
+# Version: 1.1.2
+# 🧪 to test : validate scripts
 # Appartement: Romains
 blueprint:
   name: "🕵️ Warning – Capteur de Présence Potentiellement Caché"
   description: >
-    Version: 1.1.1
+    Version: 1.1.2
     Envoie une alerte lorsqu'un capteur de présence détecte très peu d'activité
     pendant plusieurs jours (indicateur qu'il est peut-être caché ou défaillant).
   domain: automation

@@ -1,9 +1,10 @@
-# Version: 1.0.4
+# Version: 1.0.5
+# 🧪 to test : validate scripts
 # Appartement: Romains
 blueprint:
   name: "💡 Extinction Auto Lumières (Présence Temporisée)"
   description: >
-    Version: 1.0.4
+    Version: 1.0.5
     Extinction automatique des lumières basée sur un capteur de présence temporisée.
     Simple et efficace : le capteur gère déjà la temporisation.
   domain: automation

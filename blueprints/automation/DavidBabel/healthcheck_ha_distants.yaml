@@ -1,9 +1,10 @@
-# Version: 1.0.4
+# Version: 1.0.5
+# 🧪 to test : validate scripts
 # Appartement: Carmes
 blueprint:
   name: "❤️ Health Check – Surveillance Serveurs (Scrape)"
   description: >
-    Version: 1.0.4
+    Version: 1.0.5
     Surveille vos capteurs de santé (Scrape).
     Envoie une notification critique si l'état n'est plus "OK" avec rappel périodique.
     A ete créé pour le home assistant maitre uniquement
@@ -81,10 +82,13 @@ trigger:
   # Trigger 2 : Serveur rétabli (statut = OK)
   # Se déclenche quand : l'état du sensor repasse à "OK"
   # Objectif : notifier le retour à la normale
+  # Note : Le délai 'for' évite les fausses notifications au redémarrage de HA
   # --------------------------------------------------------------------------
   - platform: state
     entity_id: !input capteurs
     to: "OK"
+    for:
+      minutes: 2
     id: retour
 
 # ==============================================================================

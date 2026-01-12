@@ -18,11 +18,11 @@ REM Parcourir tous les fichiers .yaml et les grouper par categorie
 for %%f in ("%BLUEPRINTS_DIR%\*.yaml") do (
     set "filename=%%~nxf"
 
-    REM Lire la deuxieme ligne du fichier
+    REM Lire la troisieme ligne du fichier
     set "linenum=0"
     for /f "usebackq delims=" %%l in ("%%f") do (
         set /a linenum+=1
-        if !linenum! equ 2 (
+        if !linenum! equ 3 (
             set "line=%%l"
             REM Extraire la categorie
             echo !line! | findstr /C:"# Appartement:" >nul

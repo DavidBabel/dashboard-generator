@@ -1,9 +1,10 @@
-# Version: 1.0.2
+# Version: 1.0.3
+# 🧪 to test : validate scripts
 # Appartement: Tous
 blueprint:
   name: "🧠🌡️ VT Reset Automatique Optimisé & Instrumenté (Stateless)"
   description: >
-    Version: 1.0.2
+    Version: 1.0.3
     Synchronise le VT avec la vanne physique, respecte les réglages manuels,
     protège contre valeurs invalides et micro-ajustements,
     puis force un recalcul du planning après stabilisation.

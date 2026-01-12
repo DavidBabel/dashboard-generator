@@ -1,9 +1,10 @@
-# Version: 1.0.5
+# Version: 1.0.6
+# 🧪 to test : validate scripts
 # Appartement: Tous
 blueprint:
   name: "❤️ Health Check – Surveillance Connexion Prise Shelly"
   description: >
-    Version: 1.0.5
+    Version: 1.0.6
     Envoie une alerte lorsqu'une prise Shelly est hors ligne pendant une durée configurable
     et notifie quand elle revient en ligne.
   domain: automation
@@ -103,11 +104,14 @@ trigger:
   # Trigger 2 : Prise rebranchée (retour en ligne)
   # Se déclenche quand : la prise repasse de off à on
   # Objectif : notifier le retour à la normale
+  # Note : Le délai 'for' évite les fausses notifications au redémarrage de HA
   # --------------------------------------------------------------------------
   - platform: state
     entity_id: !input device_sensor
     from: "off"
     to: "on"
+    for:
+      minutes: 2
     id: rebranche
 
 action:

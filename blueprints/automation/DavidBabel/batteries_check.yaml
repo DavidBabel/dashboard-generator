@@ -1,9 +1,10 @@
-# Version: 1.0.12
+# Version: 1.0.13
+# 🧪 to test : validate scripts
 # Appartement: Tous
 blueprint:
   name: "🪫 Check Batteries Domotique (Multi-appartements)"
   description: >
-    Version: 1.0.12
+    Version: 1.0.13
     Vérifie quotidiennement les batteries domotiques et notifie si certaines
     passent sous un seuil configurable via une entité input_number.
   domain: automation

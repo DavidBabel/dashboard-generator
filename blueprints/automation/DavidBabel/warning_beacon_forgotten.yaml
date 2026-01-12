@@ -1,9 +1,10 @@
-# Version: 1.1.8
+# Version: 1.1.9
+# 🧪 to test : validate scripts
 # Appartement: Tous
 blueprint:
   name: "🕵️ Beacon abandonné dans l'appartement"
   description: >
-    Version: 1.1.8
+    Version: 1.1.9
     Désactive complètement le chauffage (preset frost) si le beacon est immobile.
     Le scheduler VT est suspendu pendant l'arrêt.
   domain: automation
