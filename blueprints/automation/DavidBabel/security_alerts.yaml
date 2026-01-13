@@ -1,10 +1,10 @@
-# Version: 1.0.5
-# ✅ working
+# Version: 1.0.6
+# 🧪 to test : Add condition on health check on boot to prevent too much notifications
 # Appartement: Tous
 blueprint:
   name: "🛡️🔥 Urgence Maison – Multi-capteurs (Eau / Fumée / Autre)"
   description: >
-    Version: 1.0.5
+    Version: 1.0.6
     Alerte critique avec rappel périodique et notification de retour à la normale.
     Compatible iOS (critique) et Android. Anti-spam intégré.
   domain: automation
@@ -110,6 +110,13 @@ variables:
       | replace('-', '_') }}
 
 action:
+  # Vérifier que Home Assistant est allumé depuis au moins 5 minutes
+  - condition: template
+    value_template: >
+      {{ (as_timestamp(now()) - as_timestamp(state_attr('automation.home_assistant_reboot_notification', 'last_triggered'))) > 300
+         if state_attr('automation.home_assistant_reboot_notification', 'last_triggered') is not none
+         else true }}
+
   - choose:
       # =========================
       # 🚨 ALERTE ACTIVE
