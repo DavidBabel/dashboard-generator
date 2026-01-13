@@ -2,7 +2,7 @@
 
 _Généré automatiquement par pre-commit_
 
-🧪 `auto_lights_off.yaml` : # 🧪 to test : validate scripts
+✅ `auto_lights_off.yaml` : # ✅ working
 ✅ `auto_lights_off_nobody_home.yaml` : # ✅ working
 🧪 `batteries_check.yaml` : # 🧪 to test : validate scripts
 🧪 `healthcheck_capteur_presence.yaml` : # 🧪 to test : validate scripts

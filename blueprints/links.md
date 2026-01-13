@@ -10,6 +10,7 @@ https://raw.githubusercontent.com/DavidBabel/ha/master/blueprints/automation/Dav
 # Appartement: Tous
 https://raw.githubusercontent.com/DavidBabel/ha/master/blueprints/automation/DavidBabel/batteries_check.yaml
 https://raw.githubusercontent.com/DavidBabel/ha/master/blueprints/automation/DavidBabel/healthcheck_prise_shelly.yaml
+https://raw.githubusercontent.com/DavidBabel/ha/master/blueprints/automation/DavidBabel/rebooted_ha.yaml
 https://raw.githubusercontent.com/DavidBabel/ha/master/blueprints/automation/DavidBabel/security_alerts.yaml
 https://raw.githubusercontent.com/DavidBabel/ha/master/blueprints/automation/DavidBabel/smart_heating_reset.yaml
 https://raw.githubusercontent.com/DavidBabel/ha/master/blueprints/automation/DavidBabel/warning_beacon_forgotten.yaml

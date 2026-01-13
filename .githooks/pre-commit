@@ -185,8 +185,56 @@ generate_status() {
     echo "📋 status.md régénéré"
 }
 
-# Générer le fichier status.md
+# ==============================================================================
+# GÉNÉRATION DU FICHIER LINKS.MD
+# ==============================================================================
+generate_links() {
+    LINKS_FILE="blueprints/links.md"
+    BASE_URL="https://raw.githubusercontent.com/DavidBabel/ha/master/blueprints/automation/DavidBabel/"
+
+    # Vider le fichier de sortie
+    > "$LINKS_FILE"
+
+    # Tableau associatif pour stocker les liens par catégorie
+    declare -A categories
+
+    # Parcourir tous les fichiers .yaml
+    for yaml_file in "$BLUEPRINTS_DIR"/*.yaml; do
+        if [ -f "$yaml_file" ]; then
+            filename=$(basename "$yaml_file")
+
+            # Lire la troisième ligne pour extraire la catégorie
+            category=$(sed -n '3p' "$yaml_file" | grep -o "# Appartement:.*" | sed 's/# Appartement: *//')
+
+            # Si pas de catégorie trouvée, mettre "Autre"
+            if [ -z "$category" ]; then
+                category="Autre"
+            fi
+
+            # Ajouter le lien à la catégorie
+            if [ -z "${categories[$category]}" ]; then
+                categories[$category]="${BASE_URL}${filename}"
+            else
+                categories[$category]="${categories[$category]}"$'\n'"${BASE_URL}${filename}"
+            fi
+        fi
+    done
+
+    # Trier les catégories et écrire dans le fichier
+    for category in $(echo "${!categories[@]}" | tr ' ' '\n' | sort); do
+        echo "# Appartement: $category" >> "$LINKS_FILE"
+        echo "${categories[$category]}" >> "$LINKS_FILE"
+        echo "" >> "$LINKS_FILE"
+    done
+
+    # Ajouter links.md au commit
+    git add "$LINKS_FILE"
+    echo "📋 links.md régénéré"
+}
+
+# Générer les fichiers
 generate_status
+generate_links
 
 # Résumé
 if [ ${#validated_files[@]} -gt 0 ]; then
