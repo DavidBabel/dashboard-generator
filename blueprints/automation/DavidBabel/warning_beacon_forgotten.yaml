@@ -1,10 +1,10 @@
-# Version: 1.2.2
-# 🧪 to test : add debug logs
+# Version: 1.2.3
+# 🧪 to test : fix dashboard url
 # Appartement: Tous
 blueprint:
   name: "🕵️ Beacon abandonné dans l'appartement"
   description: >
-    Version: 1.2.2
+    Version: 1.2.3
     Désactive complètement le chauffage (preset frost) si le beacon est immobile.
     Le scheduler VT est suspendu pendant l'arrêt.
   domain: automation
@@ -98,26 +98,26 @@ variables:
 
   # Extraction de l'identifiant de chambre depuis le thermostat
   # Format: chauffage_vt_engel_chambre_nord → nord
-  # Format: chauffage_vt_engel_chambre_grande_droite → grande-droite
+  # Format: chauffage_vt_engel_chambre_grande_droite → grande_droite
   identifiant_chambre: >
     {% set entity = thermostat_ent %}
     {% set parts = entity.split('_') %}
     {% set chambre_index = parts.index('chambre') if 'chambre' in parts else -1 %}
     {% if chambre_index >= 0 and chambre_index < parts|length - 1 %}
       {% set chambre_parts = parts[chambre_index + 1:] %}
-      {{ chambre_parts | join('-') }}
+      {{ chambre_parts | join('_') }}
     {% else %}
       unknown
     {% endif %}
 
   # Construction de l'URL du dashboard
   dashboard_url: >
-    /dashboard-{{ dashboard_appartement }}/chambre-{{ identifiant_chambre }}
+    /dashboard-{{ dashboard_appartement }}/chambre_{{ identifiant_chambre }}
 
   # Extraction du nom de la chambre pour affichage
   chambre_nom: >
     {% set chambre = identifiant_chambre %}
-    {% set mots = chambre.replace('-', ' ').split(' ') %}
+    {% set mots = chambre.replace('_', ' ').split(' ') %}
     {% set formatted = mots | map('capitalize') | join(' ') %}
     {{ formatted }}
 
@@ -141,19 +141,6 @@ trigger:
 # ACTIONS
 # ==============================================================================
 action:
-  # Debug logs pour vérifier les variables calculées
-  - service: system_log.write
-    data:
-      message: >
-        [Beacon Forgotten Debug]
-        Thermostat: {{ thermostat_ent }}
-        Appartement: {{ appartement_input }}
-        Dashboard Appartement: {{ dashboard_appartement }}
-        Identifiant Chambre: {{ identifiant_chambre }}
-        Dashboard URL: {{ dashboard_url }}
-        Chambre Nom: {{ chambre_nom }}
-      level: info
-
   - choose:
       # ----------------------------------------------------------------------
       # CAS 1 : Beacon immobile → Passage en frost
