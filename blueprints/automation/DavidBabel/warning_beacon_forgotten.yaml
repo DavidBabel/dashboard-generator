@@ -1,10 +1,10 @@
-# Version: 1.2.4
-# 🧪 to test : retest with logs
+# Version: 1.2.5
+# 🧪 to test : fix lost beacon script
 # Appartement: Tous
 blueprint:
   name: "🕵️ Beacon abandonné dans l'appartement"
   description: >
-    Version: 1.2.4
+    Version: 1.2.5
     Désactive complètement le chauffage (preset frost) si le beacon est immobile.
     Le scheduler VT est suspendu pendant l'arrêt.
   domain: automation
@@ -86,16 +86,6 @@ variables:
   thermostat_ent: !input target_thermostat
   appartement_input: !input appartement
 
-  # Extraction du nom de l'appartement pour le dashboard
-  dashboard_appartement: >
-    {% if '🟧 Engel' in appartement_input %}
-      engelbreit
-    {% elif '🟩 Romains' in appartement_input %}
-      romains
-    {% else %}
-      {{ appartement_input | lower }}
-    {% endif %}
-
   # Extraction de l'identifiant de chambre depuis le thermostat
   # Format: chauffage_vt_engel_chambre_nord → nord
   # Format: chauffage_vt_engel_chambre_grande_droite → grande_droite
@@ -112,7 +102,7 @@ variables:
 
   # Construction de l'URL du dashboard
   dashboard_url: >
-    /dashboard-{{ dashboard_appartement }}/chambre_{{ identifiant_chambre }}
+    /dashboard-chauffage/chambre_{{ identifiant_chambre }}
 
   # Extraction du nom de la chambre pour affichage
   chambre_nom: >
@@ -148,7 +138,6 @@ action:
         [Beacon Forgotten Debug]
         Thermostat: {{ thermostat_ent }}
         Appartement: {{ appartement_input }}
-        Dashboard Appartement: {{ dashboard_appartement }}
         Identifiant Chambre: {{ identifiant_chambre }}
         Dashboard URL: {{ dashboard_url }}
         Chambre Nom: {{ chambre_nom }}
@@ -175,7 +164,6 @@ action:
                 🔒 Chauffage passé en mode Frost
               data:
                 icon: mdi:snowflake-alert
-                clickAction: "{{ dashboard_url }}"
                 url: "{{ dashboard_url }}"
 
           - service: climate.set_preset_mode
