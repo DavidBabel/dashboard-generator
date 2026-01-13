@@ -1,0 +1,31 @@
+#!/bin/bash
+# Post-commit hook pour finaliser les mises à jour des blueprints
+# Amende le commit si des fichiers ont été modifiés par commit-msg
+
+# Récupérer le message du dernier commit
+commit_msg=$(git log -1 --pretty=%s)
+
+# Vérifier s'il y a des fichiers modifiés non stagés qui sont des blueprints
+modified_blueprints=$(git diff --name-only blueprints/automation/**/*.yaml 2>/dev/null)
+
+if [ -z "$modified_blueprints" ]; then
+    # Pas de modifications, tout est OK
+    exit 0
+fi
+
+echo ""
+echo "🔄 Finalisation : Amendement du commit avec les messages à jour..."
+
+# Stager les blueprints modifiés
+for file in $modified_blueprints; do
+    if [ -f "$file" ]; then
+        git add "$file"
+        echo "  ✓ $(basename $file)"
+    fi
+done
+
+# Amender le commit sans modifier le message et sans re-déclencher les hooks
+git commit --amend --no-edit --no-verify
+
+echo "✅ Commit amendé avec succès !"
+echo ""

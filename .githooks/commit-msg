@@ -44,8 +44,7 @@ for file in $staged_files; do
             # Remplacer le fichier original
             mv "$temp_file" "$file"
 
-            # Re-stager le fichier
-            git add "$file"
+            # NE PAS re-stager ici - le post-commit s'en occupera
 
             updated_files+=("$file")
             echo "✓ Message mis à jour dans : $(basename $file)"
@@ -55,7 +54,7 @@ done
 
 if [ ${#updated_files[@]} -gt 0 ]; then
     echo ""
-    echo "📝 Message de commit appliqué aux blueprints modifiés"
+    echo "📝 Messages mis à jour (seront inclus via post-commit hook)"
 fi
 
 exit 0
