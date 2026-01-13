@@ -4,13 +4,13 @@ _Généré automatiquement par pre-commit_
 
 ✅ `auto_lights_off.yaml` : # ✅ working
 ✅ `auto_lights_off_nobody_home.yaml` : # ✅ working
-🧪 `batteries_check.yaml` : # 🧪 to test : validate scripts
-🧪 `healthcheck_capteur_presence.yaml` : # 🧪 to test : validate scripts
-🧪 `healthcheck_ha_distants.yaml` : # 🧪 to test : validate scripts
-🧪 `healthcheck_prise_shelly.yaml` : # 🧪 to test : validate scripts
+✅ `batteries_check.yaml` : # ✅ working
+✅ `healthcheck_capteur_presence.yaml` : # ✅ working
+✅ `healthcheck_ha_distants.yaml` : # ✅ working
+✅ `healthcheck_prise_shelly.yaml` : # ✅ working
 🧪 `rebooted_ha.yaml` : # 🧪 to test : add new reboot script
-🧪 `security_alerts.yaml` : # 🧪 to test : validate scripts
+✅ `security_alerts.yaml` : # ✅ working
 🧪 `smart_heating_reset.yaml` : # 🧪 to test : validate scripts
-🧪 `warning_beacon_forgotten.yaml` : # 🧪 to test : validate scripts
+✅ `warning_beacon_forgotten.yaml` : to create once for each beacon
 🧪 `warning_danfoss_ally_unplug.yaml` : # 🧪 to test : validate scripts
 🧪 `warning_nobody_detected_for_long.yaml` : # 🧪 to test : validate scripts

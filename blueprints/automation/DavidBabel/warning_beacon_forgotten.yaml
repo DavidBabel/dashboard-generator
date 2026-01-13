@@ -1,5 +1,5 @@
 # Version: 1.1.9
-# 🧪 to test : validate scripts
+# ✅ working : to create once for each beacon
 # Appartement: Tous
 blueprint:
   name: "🕵️ Beacon abandonné dans l'appartement"
