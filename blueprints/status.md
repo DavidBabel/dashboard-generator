@@ -11,6 +11,6 @@ _Généré automatiquement par pre-commit_
 ✅ `rebooted_ha.yaml` : # ✅ working
 ✅ `security_alerts.yaml` : # ✅ working
 🧪 `smart_heating_reset.yaml` : # 🧪 to test : validate scripts
-✅ `warning_beacon_forgotten.yaml` : to create once for each beacon
+🧪 `warning_beacon_forgotten.yaml` : # 🧪 to test : pending
 🧪 `warning_danfoss_ally_unplug.yaml` : # 🧪 to test : validate scripts
 🧪 `warning_nobody_detected_for_long.yaml` : # 🧪 to test : validate scripts

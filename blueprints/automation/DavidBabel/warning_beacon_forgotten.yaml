@@ -1,10 +1,10 @@
-# Version: 1.1.9
-# ✅ working : to create once for each beacon
+# Version: 1.2.1
+# 🧪 to test : remove dashboard url
 # Appartement: Tous
 blueprint:
   name: "🕵️ Beacon abandonné dans l'appartement"
   description: >
-    Version: 1.1.9
+    Version: 1.2.1
     Désactive complètement le chauffage (preset frost) si le beacon est immobile.
     Le scheduler VT est suspendu pendant l'arrêt.
   domain: automation
@@ -52,48 +52,18 @@ blueprint:
           integration: versatile_thermostat
 
     # --------------------------------------------------------------------------
-    # Nom du site : identification de l'appartement
+    # Appartement : identification de l'appartement
     # Type attendu : sélection parmi les options définies
-    # Valeur attendue : nom du site
+    # Valeur attendue : emoji + nom d'appartement
     # --------------------------------------------------------------------------
-    site_name:
-      name: Nom du Site
+    appartement:
+      name: Appartement
+      default: "🟧 Engel"
       selector:
         select:
           options:
-            - 🟧 Engel
-            - 🟩 Romains
-
-    # --------------------------------------------------------------------------
-    # URL du dashboard : lien vers la chambre concernée
-    # Type attendu : URL de dashboard Home Assistant
-    # Valeur attendue : chemin vers la vue dashboard
-    # --------------------------------------------------------------------------
-    dashboard_url:
-      name: URL du Dashboard (Chambre)
-      default: "/dashboard-engelbreit/chambre-salon"
-      selector:
-        select:
-          options:
-            - label: "Romains - Chambre Cuisine"
-              value: "/dashboard-romains/chambre-cuisine"
-            - label: "Romains - Chambre Cellier"
-              value: "/dashboard-romains/chambre-cellier"
-            - label: "Romains - Chambre Balcon"
-              value: "/dashboard-romains/chambre-balcon"
-            - label: "Romains - Chambre Grande Gauche"
-              value: "/dashboard-romains/chambre-grande-gauche"
-            - label: "Romains - Chambre Grande Droite"
-              value: "/dashboard-romains/chambre-grande-droite"
-            - label: "Engel - Chambre Salon"
-              value: "/dashboard-engelbreit/chambre-salon"
-            - label: "Engel - Chambre Sud"
-              value: "/dashboard-engelbreit/chambre-sud"
-            - label: "Engel - Chambre Ouest"
-              value: "/dashboard-engelbreit/chambre-ouest"
-            - label: "Engel - Chambre Nord"
-              value: "/dashboard-engelbreit/chambre-nord"
-          custom_value: true
+            - "🟧 Engel"
+            - "🟩 Romains"
 
     # --------------------------------------------------------------------------
     # Device de notification : appareil mobile recevant les alertes
@@ -114,14 +84,39 @@ variables:
   ratio_ent: !input ratio_sensor
   seuil_ent: !input input_seuil_percent
   thermostat_ent: !input target_thermostat
-  site: !input site_name
-  url_val: !input dashboard_url
+  appartement_input: !input appartement
 
-  # Extraction du nom de la chambre depuis l'URL
+  # Extraction du nom de l'appartement pour le dashboard
+  dashboard_appartement: >
+    {% if '🟧 Engel' in appartement_input %}
+      engelbreit
+    {% elif '🟩 Romains' in appartement_input %}
+      romains
+    {% else %}
+      {{ appartement_input | lower }}
+    {% endif %}
+
+  # Extraction de l'identifiant de chambre depuis le thermostat
+  # Format: chauffage_vt_engel_chambre_nord → nord
+  # Format: chauffage_vt_engel_chambre_grande_droite → grande-droite
+  identifiant_chambre: >
+    {% set entity = thermostat_ent %}
+    {% set parts = entity.split('_') %}
+    {% set chambre_index = parts.index('chambre') if 'chambre' in parts else -1 %}
+    {% if chambre_index >= 0 and chambre_index < parts|length - 1 %}
+      {% set chambre_parts = parts[chambre_index + 1:] %}
+      {{ chambre_parts | join('-') }}
+    {% else %}
+      unknown
+    {% endif %}
+
+  # Construction de l'URL du dashboard
+  dashboard_url: >
+    /dashboard-{{ dashboard_appartement }}/chambre-{{ identifiant_chambre }}
+
+  # Extraction du nom de la chambre pour affichage
   chambre_nom: >
-    {% set url = url_val %}
-    {% set parts = url.split('/') %}
-    {% set chambre = parts[-1] if parts|length > 0 else '' %}
+    {% set chambre = identifiant_chambre %}
     {% set mots = chambre.replace('-', ' ').split(' ') %}
     {% set formatted = mots | map('capitalize') | join(' ') %}
     {{ formatted }}
@@ -161,14 +156,14 @@ action:
         sequence:
           - service: "{{ notify_service }}"
             data:
-              title: "📶 Beacon {{ site }}"
+              title: "📶 Beacon {{ appartement_input }}"
               message: >
                 📍 {{ chambre_nom }} Beacon Abandonné
                 🔒 Chauffage passé en mode Frost
               data:
                 icon: mdi:snowflake-alert
-                clickAction: !input dashboard_url
-                url: !input dashboard_url
+                clickAction: "{{ dashboard_url }}"
+                url: "{{ dashboard_url }}"
 
           - service: climate.set_preset_mode
             target:
