@@ -1,5 +1,5 @@
 # Version: 1.0.5
-# 🧪 to test : add new reboot script
+# ✅ working
 # Appartement: Tous
 blueprint:
   name: "🔄 Notification Redémarrage Home Assistant"
