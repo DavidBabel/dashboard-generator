@@ -1,5 +1,5 @@
 # Version: 1.0.6
-# 🧪 to test : Add condition on health check on boot to prevent too much notifications
+# ✅ working
 # Appartement: Romains
 blueprint:
   name: "❤️ Health Check – Surveillance Détecteurs de Présence Aqara"
