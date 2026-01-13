@@ -1,10 +1,10 @@
-# Version: 1.2.3
-# 🧪 to test : fix dashboard url
+# Version: 1.2.4
+# 🧪 to test : retest with logs
 # Appartement: Tous
 blueprint:
   name: "🕵️ Beacon abandonné dans l'appartement"
   description: >
-    Version: 1.2.3
+    Version: 1.2.4
     Désactive complètement le chauffage (preset frost) si le beacon est immobile.
     Le scheduler VT est suspendu pendant l'arrêt.
   domain: automation
@@ -141,6 +141,19 @@ trigger:
 # ACTIONS
 # ==============================================================================
 action:
+  # Debug logs pour vérifier les variables calculées
+  - service: system_log.write
+    data:
+      message: >
+        [Beacon Forgotten Debug]
+        Thermostat: {{ thermostat_ent }}
+        Appartement: {{ appartement_input }}
+        Dashboard Appartement: {{ dashboard_appartement }}
+        Identifiant Chambre: {{ identifiant_chambre }}
+        Dashboard URL: {{ dashboard_url }}
+        Chambre Nom: {{ chambre_nom }}
+      level: info
+
   - choose:
       # ----------------------------------------------------------------------
       # CAS 1 : Beacon immobile → Passage en frost
