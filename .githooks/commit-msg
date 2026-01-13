@@ -1,0 +1,61 @@
+#!/bin/bash
+# Commit-msg hook pour mettre à jour le message dans la ligne "# 🧪 to test"
+# S'exécute après la saisie du message de commit mais avant la finalisation
+#
+# Rôle : Remplace le placeholder "pending" par le vrai message de commit
+# Compatible avec le workflow pre-commit qui bump la version
+
+COMMIT_MSG_FILE=$1
+
+# Lire le message de commit (première ligne uniquement)
+commit_msg=$(head -1 "$COMMIT_MSG_FILE" | tr -d '\r' | sed 's/["\`$]//g')
+
+if [ -z "$commit_msg" ]; then
+    exit 0
+fi
+
+# Récupérer les fichiers stagés
+staged_files=$(git diff --cached --name-only --diff-filter=ACM)
+
+if [ -z "$staged_files" ]; then
+    exit 0
+fi
+
+updated_files=()
+
+for file in $staged_files; do
+    # Vérifier si c'est un blueprint avec une ligne "to test"
+    if [[ $file =~ ^blueprints/automation/.+\.yaml$ ]] && [ -f "$file" ]; then
+        line2=$(sed -n '2p' "$file")
+
+        # Si la ligne 2 contient "to test", mettre à jour le message
+        if echo "$line2" | grep -q "to test"; then
+            # Créer un fichier temporaire avec le nouveau message
+            temp_file="${file}.tmp"
+
+            awk -v commit_msg="$commit_msg" '
+                NR == 2 && /^#.*to test/ {
+                    print "# 🧪 to test : " commit_msg
+                    next
+                }
+                { print }
+            ' "$file" > "$temp_file"
+
+            # Remplacer le fichier original
+            mv "$temp_file" "$file"
+
+            # Re-stager le fichier
+            git add "$file"
+
+            updated_files+=("$file")
+            echo "✓ Message mis à jour dans : $(basename $file)"
+        fi
+    fi
+done
+
+if [ ${#updated_files[@]} -gt 0 ]; then
+    echo ""
+    echo "📝 Message de commit appliqué aux blueprints modifiés"
+fi
+
+exit 0

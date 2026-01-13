@@ -1,0 +1,14 @@
+alias: Toggle Hue Sync
+description: Active ou désactive la synchro HDMI du boîtier 8K via Webhook
+triggers:
+  - trigger: webhook
+    allowed_methods:
+      - POST
+    local_only: true
+    webhook_id: toggle-hue-sync
+conditions: []
+actions:
+  - action: switch.toggle
+    target:
+      entity_id: switch.sync_box_synchronisation_des_lumieres
+mode: single

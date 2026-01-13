@@ -10,15 +10,15 @@
 # Logique :
 #   - Si le fichier est modifié (pas juste validation) → bump version + statut "🧪 to test"
 #   - Si seule la ligne 2 change de "🧪 to test" vers "✅ working" → pas de bump (validation)
+#   - Le message de commit final est appliqué par le commit-msg hook
 #   - Génère automatiquement status.md avec l'état de tous les blueprints
 
 BLUEPRINTS_DIR="blueprints/automation/DavidBabel"
 STATUS_FILE="blueprints/status.md"
 
-# Récupérer le message de commit
-commit_msg=$(cat .git/COMMIT_EDITMSG 2>/dev/null || echo "update")
-# Nettoyer le message (première ligne uniquement, sans caractères spéciaux problématiques)
-commit_msg=$(echo "$commit_msg" | head -1 | tr -d '\r' | sed 's/["\`$]//g')
+# En pre-commit, on n'a pas encore le message de commit
+# On utilise un placeholder qui sera remplacé par commit-msg hook
+commit_msg="pending"
 
 # Récupérer les fichiers stagés
 staged_files=$(git diff --cached --name-only --diff-filter=ACM)
