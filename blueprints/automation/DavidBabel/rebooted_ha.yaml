@@ -1,10 +1,10 @@
-# Version: 1.0.1
+# Version: 1.0.2
 # 🧪 to test : pending
 # Appartement: Tous
 blueprint:
   name: "🔄 Notification Redémarrage Home Assistant"
   description: >
-    Version: 1.0.1
+    Version: 1.0.2
     Envoie une notification lorsque Home Assistant redémarre.
     Utile pour surveiller les redémarrages automatiques ou manuels.
   domain: automation
