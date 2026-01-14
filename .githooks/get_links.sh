@@ -1,9 +1,13 @@
 #!/bin/bash
 # Génère les liens GitHub raw pour tous les blueprints, organisés par catégorie
 
-OUTPUT_FILE="links.md"
+# Se placer dans le répertoire racine du projet
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR/.." || exit 1
+
+OUTPUT_FILE="blueprints/links.md"
 BASE_URL="https://raw.githubusercontent.com/DavidBabel/ha/master/blueprints/automation/DavidBabel/"
-BLUEPRINTS_DIR="automation/DavidBabel"
+BLUEPRINTS_DIR="blueprints/automation/DavidBabel"
 
 echo "Génération des liens GitHub pour les blueprints..."
 

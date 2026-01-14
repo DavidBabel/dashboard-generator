@@ -3,9 +3,9 @@ REM Genere les liens GitHub raw pour tous les blueprints, organises par categori
 
 setlocal enabledelayedexpansion
 
-set "OUTPUT_FILE=links.md"
+set "OUTPUT_FILE=..\blueprints\links.md"
 set "BASE_URL=https://raw.githubusercontent.com/DavidBabel/ha/master/blueprints/automation/DavidBabel/"
-set "BLUEPRINTS_DIR=automation\DavidBabel"
+set "BLUEPRINTS_DIR=..\blueprints\automation\DavidBabel"
 set "TEMP_DIR=%TEMP%\blueprints_links"
 
 echo Generation des liens GitHub pour les blueprints...
@@ -58,4 +58,3 @@ echo [OK] Liens generes dans %OUTPUT_FILE%
 echo.
 type "%OUTPUT_FILE%"
 echo.
-pause

@@ -166,3 +166,31 @@ git config --unset core.hooksPath
 ## 🔄 Migration des blueprints existants
 
 Tous les blueprints ont été initialisés à `1.0.0`. Le hook les incrémentera automatiquement dès la prochaine modification.
+
+## 📋 Scripts utilitaires
+
+### get_links - Génération automatique des liens GitHub
+
+Deux scripts sont disponibles pour générer automatiquement les liens GitHub raw de tous les blueprints, organisés par appartement :
+
+**Sur Windows** :
+
+```cmd
+.\.githooks\get_links.bat
+```
+
+**Sur Linux/Mac** :
+
+```bash
+chmod +x .githooks/get_links.sh
+./.githooks/get_links.sh
+```
+
+Ces scripts :
+
+- Parcourent tous les blueprints dans `blueprints/automation/DavidBabel/`
+- Extraient la catégorie (Appartement) de chaque blueprint
+- Génèrent des liens GitHub raw organisés par catégorie
+- Créent/mettent à jour le fichier `blueprints/links.md`
+
+Le fichier généré contient des liens prêts à être copiés dans Home Assistant pour importer les blueprints.

@@ -1,0 +1,46 @@
+# Version: 1.0.6
+# 🧪 to test : many update
+# Appartement: Tous
+blueprint:
+  name: "🧠🌡️ VT Scheduler Recalculate"
+  description: >
+    Version: 1.0.6
+    Force le recalcul du Versatile Thermostat pour appliquer le mode attendu par son scheduler.
+    Peut aussi être exécuté manuellement via le bouton "Exécuter" dans Home Assistant.
+  domain: automation
+  input:
+    thermostat:
+      name: Versatile Thermostat
+      description: Entité climate du Versatile Thermostat
+      selector:
+        entity:
+          domain: climate
+          integration: versatile_thermostat
+
+mode: single
+
+trigger:
+  # Vérification périodique: laisse le VT s'aligner sur son scheduler
+  - platform: time_pattern
+    id: periodic
+    minutes: "/5"
+
+  # Au démarrage de Home Assistant
+  - platform: homeassistant
+    id: ha_start
+    event: start
+
+action:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger is defined and trigger.platform is defined and trigger.platform == 'manual' }}"
+        sequence:
+          - service: logbook.log
+            data:
+              name: "VT Scheduler"
+              message: "▶️ Recalculate lancé manuellement"
+
+  - service: versatile_thermostat.recalculate
+    target:
+      entity_id: !input thermostat

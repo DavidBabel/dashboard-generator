@@ -8,9 +8,11 @@ _Généré automatiquement par pre-commit_
 ✅ `healthcheck_capteur_presence.yaml` : # ✅ working
 ✅ `healthcheck_ha_distants.yaml` : # ✅ working
 ✅ `healthcheck_prise_shelly.yaml` : # ✅ working
+🧪 `media_start_multimedia.yaml` : # 🧪 to test : pending
 ✅ `rebooted_ha.yaml` : # ✅ working
 ✅ `security_alerts.yaml` : # ✅ working
 🧪 `smart_heating_reset.yaml` : # 🧪 to test : validate scripts
-🧪 `warning_beacon_forgotten.yaml` : # 🧪 to test : pending
-🧪 `warning_danfoss_ally_unplug.yaml` : # 🧪 to test : validate scripts
-🧪 `warning_nobody_detected_for_long.yaml` : # 🧪 to test : validate scripts
+🧪 `smart_heating_scheduler.yaml` : # 🧪 to test : pending
+✅ `warning_beacon_forgotten.yaml` : # ✅ working
+🧪 `warning_danfoss_ally_unplug.yaml` : # 🧪 to test : pending
+🧪 `warning_nobody_detected_for_long.yaml` : # 🧪 to test : pending

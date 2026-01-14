@@ -15,6 +15,71 @@ Les blueprints doivent être :
 
 ## 📋 Standards de Création de Blueprints
 
+## 🪝 Règles déduites des Git Hooks (.githooks)
+
+### 0) En-tête standard des blueprints (OBLIGATOIRE)
+
+Chaque blueprint doit commencer par **3 commentaires** (dans cet ordre) :
+
+```yaml
+# Version: 1.0.5
+# ✅ working
+# Appartement: Tous
+```
+
+La **ligne 2** peut aussi être :
+
+```yaml
+# 🧪 to test : <message>
+```
+
+Notes :
+
+- La ligne 2 sert de **statut** (test/validé) et est utilisée par les hooks.
+- La version suit **SemVer** : `MAJOR.MINOR.PATCH`.
+
+### 1) Versioning automatique (PATCH)
+
+Le hook `pre-commit` :
+
+- Détecte les blueprints `.yaml` modifiés (dans `blueprints/automation/**`).
+- Incrémente automatiquement la **version PATCH** (ex: `1.0.5` → `1.0.6`).
+- Remplace la ligne 2 par `# 🧪 to test : pending` (placeholder).
+- Met à jour aussi la ligne `Version: x.y.z` à l'intérieur de `blueprint.description` si elle est présente.
+
+Le hook `commit-msg` remplace ensuite `pending` par le **vrai message de commit**.
+
+Le hook `post-commit` peut **amender automatiquement** le commit pour inclure la mise à jour finale du message.
+
+### 2) Validation sans bump (très important)
+
+Si tu ne fais que valider un blueprint après tests, tu dois faire un commit qui ne modifie **que** la ligne 2 :
+
+- `# 🧪 to test : ...` → `# ✅ working` (ou `# ✅ working : commentaire`)
+
+Dans ce cas, le hook considère que c'est une **validation uniquement** et **n'incrémente pas** la version.
+
+### 3) Changements MAJOR/MINOR
+
+Les bumps **MAJOR** ou **MINOR** sont **manuels** :
+
+- Tu modifies `# Version: x.y.z` (et idéalement la `Version:` dans la description).
+- Le hook continuera ensuite à incrémenter le **PATCH**.
+
+### 4) Messages de commit (compatibilité hook)
+
+Le hook `commit-msg` nettoie le sujet de commit (1ère ligne) en supprimant certains caractères (`"`, `` ` ``, `$`).
+Donc préférer des messages simples (ex: `Fix: ...`, `Feat: ...`) sans ces caractères dans le sujet.
+
+### 5) Fichiers auto-générés (ne pas éditer à la main)
+
+Les hooks/scripts régénèrent automatiquement :
+
+- `blueprints/status.md` (état ✅/🧪 de tous les blueprints)
+- `blueprints/links.md` (liens GitHub raw)
+
+Règle : **ne pas modifier manuellement** ces fichiers, et ne pas en faire des sources de vérité.
+
 ### 1. Structure Obligatoire
 
 Chaque blueprint **DOIT** contenir :
@@ -362,6 +427,8 @@ blueprints/
 ### ⛔ NE JAMAIS CRÉER DE FICHIERS .md
 
 **RÈGLE CRITIQUE :** Les agents **NE DOIVENT JAMAIS** créer de fichiers Markdown (`.md`) sauf si l'utilisateur le demande **EXPLICITEMENT**.
+
+⚠️ **Exception (auto-générée par hooks)** : `blueprints/status.md` et `blueprints/links.md` peuvent être créés/mis à jour par les scripts/hooks du repo. Les agents ne doivent pas les éditer à la main.
 
 ❌ **INTERDIT :**
 

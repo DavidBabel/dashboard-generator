@@ -1,179 +1,350 @@
-# Version: 1.0.4
-# 🧪 to test : validate scripts
+# Version: 1.0.6
+# 🧪 to test : many update
 # Appartement: Tous
 blueprint:
-  name: "🕵️ Surveillance Débranchement Vanne Danfoss Ally"
+  name: "🕵️ Surveillance Débranchement Vannes Danfoss Ally – Multi-capteurs"
   description: >
-    Version: 1.0.4
-    Détecte et alerte lorsqu'une vanne thermostatique Danfoss Ally a été débranchée,
-    dévissée du radiateur ou devient inaccessible.
-
-    La vanne Danfoss Ally possède un capteur interne `mounted_mode_active` qui indique
-    si elle est correctement installée sur le radiateur. Ce blueprint surveille cet état
-    et vous prévient en cas de problème.
-  #  TODO : important tout reimplementer
+    Version: 1.0.6
+    Surveille vos vannes thermostatiques Danfoss Ally et envoie une alerte critique
+    lorsqu'une vanne est débranchée du radiateur ou devient inaccessible (pile faible, déconnexion).
+    Notification de retour à la normale incluse. Rappel périodique tant que le problème persiste.
   domain: automation
   # ==============================================================================
   # INPUTS - Configuration des paramètres du blueprint
   # ==============================================================================
   input:
     # --------------------------------------------------------------------------
-    # Vanne Danfoss Ally : sensor de détection de montage
+    # Appartement : filtre pour les capteurs concernés
+    # Type attendu : sélection parmi les options définies
+    # Valeur attendue : emoji + nom d'appartement
+    # --------------------------------------------------------------------------
+    appartement:
+      name: Appartement
+      description: Sélectionne l'appartement concerné
+      default: "🟧 Engel"
+      selector:
+        select:
+          options:
+            - "🟧 Engel"
+            - "🟩 Romains"
+            - "🟦 Carmes"
+
+    # --------------------------------------------------------------------------
+    # Vannes Danfoss Ally : capteurs de détection de montage
     # Type attendu : binary_sensor.xxx_mounted_mode_active
     # Valeur attendue : on = montée, off = démontée, unavailable = hors ligne
     # Trouver via : Outils de développement > États > rechercher "mounted"
     # --------------------------------------------------------------------------
-    vanne_entity:
-      name: Vanne Danfoss Ally
+    vannes:
+      name: Vannes Danfoss Ally
       description: >
-        Sélectionnez l'entité binary_sensor correspondant au mode de montage de votre vanne
-        (généralement nommée binary_sensor.xxx_mounted_mode_active ou binary_sensor.xxx_mounted_mode_control).
-        Si vous ne trouvez pas cette entité, vérifiez dans les outils de développement de Home Assistant.
+        Sélectionnez les entités binary_sensor correspondant au mode de montage de vos vannes
+        (généralement nommées binary_sensor.xxx_mounted_mode_active ou binary_sensor.xxx_mounted_mode_control).
+      default:
+        - binary_sensor.chauffage_engel_chambre_salon_mounted_mode_active
+        - binary_sensor.chauffage_engel_chambre_sud_mounted_mode_active
+        - binary_sensor.chauffage_engel_chambre_ouest_mounted_mode_active
+        - binary_sensor.chauffage_engel_chambre_nord_mounted_mode_active
+        - binary_sensor.chauffage_engel_salon_mounted_mode_active
+        - binary_sensor.chauffage_romains_chambre_cuisine_mounted_mode_active
+        - binary_sensor.chauffage_romains_chambre_cellier_mounted_mode_active
+        - binary_sensor.chauffage_romains_chambre_balcon_mounted_mode_active
+        - binary_sensor.chauffage_romains_chambre_grande_gauche_mounted_mode_active
+        - binary_sensor.chauffage_romains_chambre_grande_droite_mounted_mode_active
+        - binary_sensor.chauffage_romains_salle_de_bains_mounted_mode_active
       selector:
         entity:
           domain: binary_sensor
-
-    # --------------------------------------------------------------------------
-    # Nom de la vanne : identification pour les notifications
-    # Type attendu : texte libre
-    # Valeur attendue : nom de la pièce ou du radiateur (ex: "Salon", "Chambre")
-    # --------------------------------------------------------------------------
-    vanne_name:
-      name: Nom de la vanne
-      description: Nom de la pièce ou du radiateur pour personnaliser les notifications (ex. "Salon", "Chambre parentale")
-      default: "la vanne"
-      selector:
-        text:
-
-    # --------------------------------------------------------------------------
-    # Device de notification : appareil mobile recevant les alertes critiques
-    # Type attendu : device avec l'app mobile Home Assistant installée
-    # --------------------------------------------------------------------------
-    notify_device:
-      name: Device à notifier
-      description: >
-        Le device doit utiliser l'application mobile officielle Home Assistant.
-        Les notifications seront envoyées en mode critique (iOS) avec priorité haute.
-      selector:
-        device:
-          filter:
-            integration: mobile_app
-
-    # --------------------------------------------------------------------------
-    # Vérifier l'inaccessibilité : activer l'alerte pour vanne hors ligne
-    # Type attendu : booléen
-    # Valeur attendue : true = surveiller aussi l'inaccessibilité, false = ignorer
-    # --------------------------------------------------------------------------
-    check_unavailable:
-      name: Vérifier l'inaccessibilité
-      description: >
-        Activer une alerte supplémentaire si la vanne devient inaccessible (hors ligne).
-        Utile pour détecter les problèmes de pile ou de connexion Zigbee.
-      default: true
-      selector:
-        boolean:
+          multiple: true
 
     # --------------------------------------------------------------------------
     # Délai avant alerte d'inaccessibilité : temps d'attente pour éviter fausses alertes
     # Type attendu : nombre entier
     # Valeur attendue : durée en minutes (recommandé : 5)
     # --------------------------------------------------------------------------
-    unavailable_delay:
-      name: Délai avant alerte d'inaccessibilité
-      description: Temps d'attente avant de considérer que la vanne est réellement hors ligne (évite les fausses alertes)
+    delai_avant_alerte:
+      name: Délai avant alerte
+      description: Temps d'attente avant de déclencher l'alerte d'inaccessibilité (évite les fausses alertes)
       default: 5
       selector:
         number:
           min: 1
-          max: 60
+          max: 30
           unit_of_measurement: minutes
 
     # --------------------------------------------------------------------------
-    # Activer les notifications : permet de désactiver temporairement les alertes
-    # Type attendu : booléen
-    # Valeur attendue : true = notifications activées, false = désactivées
+    # Device de notification : appareil mobile recevant les alertes
+    # Type attendu : device avec l'app mobile Home Assistant installée
     # --------------------------------------------------------------------------
-    enable_notification:
-      name: Activer les notifications
-      description: Désactiver temporairement les notifications sans supprimer l'automatisation
+    notify_device:
+      name: Device à notifier
+      description: Le device doit utiliser l'application mobile officielle Home Assistant.
+      selector:
+        device:
+          filter:
+            integration: mobile_app
+
+    # --------------------------------------------------------------------------
+    # Vérification périodique : exécution globale (toutes les vannes)
+    # Objectif : envoyer des notifs pour chaque vanne en défaut, même sans changement d'état
+    # --------------------------------------------------------------------------
+    verification_periodique:
+      name: Vérification périodique
+      description: Lance une vérification globale le 1er de chaque mois.
       default: true
       selector:
         boolean:
 
 # ==============================================================================
-# MODE SINGLE : Une seule exécution à la fois (notifications uniques)
+# MODE PARALLEL : Permet de gérer plusieurs vannes simultanément
 # ==============================================================================
-mode: single
-max_exceeded: silent
+mode: parallel
+max: 10
 
 # ==============================================================================
 # TRIGGERS : Événements qui déclenchent l'automation
 # ==============================================================================
 trigger:
   # --------------------------------------------------------------------------
+  # Trigger 0 : Exécution manuelle (événement custom)
+  # Se déclenche quand : événement "danfoss_ally_unplug_check" est émis
+  # Objectif : vérifier l'état de toutes les vannes à la demande (sans dépendre d'un changement d'état)
+  # --------------------------------------------------------------------------
+  - platform: event
+    event_type: danfoss_ally_unplug_check
+    id: manual_check
+
+  # --------------------------------------------------------------------------
+  # Trigger 0b : Vérification mensuelle
+  # Se déclenche : tous les jours à une heure donnée, mais n'exécute l'action que le 1er du mois
+  # Objectif : envoyer des notifs pour chaque vanne en défaut, même sans changement d'état
+  # --------------------------------------------------------------------------
+  - platform: time
+    at: "12:00:00"
+    id: monthly_check
+
+  # --------------------------------------------------------------------------
   # Trigger 1 : Vanne débranchée/dévissée
   # Se déclenche quand : mounted_mode_active passe à off
   # Objectif : détecter que la vanne n'est plus montée sur le radiateur
   # --------------------------------------------------------------------------
   - platform: state
-    entity_id: !input vanne_entity
+    entity_id: !input vannes
     to: "off"
     id: unmounted
 
   # --------------------------------------------------------------------------
-  # Trigger 2 : Vanne inaccessible (optionnel)
+  # Trigger 2 : Vanne inaccessible
   # Se déclenche quand : la vanne devient unavailable pendant X minutes
   # Objectif : détecter une panne de pile ou de connexion Zigbee
   # --------------------------------------------------------------------------
   - platform: state
-    entity_id: !input vanne_entity
+    entity_id: !input vannes
     to: "unavailable"
     for:
-      minutes: !input unavailable_delay
+      minutes: !input delai_avant_alerte
     id: unavailable
 
-# ==============================================================================
-# CONDITION : Vérifications avant exécution
-# ==============================================================================
-condition:
-  - condition: template
-    value_template: !input enable_notification
+  # --------------------------------------------------------------------------
+  # Trigger 3 : Retour à la normale (vanne remontée)
+  # Se déclenche quand : la vanne repasse à on
+  # Objectif : notifier le retour à la normale
+  # Note : Le délai 'for' évite les fausses notifications au redémarrage de HA
+  # --------------------------------------------------------------------------
+  - platform: state
+    entity_id: !input vannes
+    to: "on"
+    for:
+      minutes: 2
+    id: retour_monte
+
+  # --------------------------------------------------------------------------
+  # Trigger 4 : Retour en ligne
+  # Se déclenche quand : la vanne sort de l'état unavailable
+  # Objectif : notifier que la vanne est de nouveau accessible
+  # --------------------------------------------------------------------------
+  - platform: state
+    entity_id: !input vannes
+    from: "unavailable"
+    for:
+      minutes: 2
+    id: retour_ligne
 
 # ==============================================================================
 # VARIABLES : Préparation des données pour les notifications
 # ==============================================================================
 variables:
-  vanne_name: !input vanne_name
-  unavailable_delay: !input unavailable_delay
+  verification_periodique: !input verification_periodique
+  trigger_platform: "{{ (trigger.platform if trigger is defined and trigger.platform is defined else 'manual') }}"
+  trigger_id: "{{ (trigger.id if trigger is defined and trigger.id is defined else 'manual_ui') }}"
+  trigger_entity: "{{ (trigger.entity_id if trigger is defined and trigger.entity_id is defined else 'n/a') }}"
+  vanne: "{{ (trigger.entity_id if trigger is defined and trigger.entity_id is defined else 'manual') }}"
+  nom: "{{ (state_attr(trigger.entity_id, 'friendly_name') if trigger is defined and trigger.entity_id is defined else 'Test manuel') }}"
   notify_device: !input notify_device
   notify_service: >
     notify.mobile_app_{{ device_attr(notify_device, 'name')
       | lower
       | replace(' ', '_')
       | replace('-', '_') }}
+  vannes_list: !input vannes
+  is_manual: "{{ trigger is not defined or trigger.platform == 'manual' or trigger.id in ['manual_check', 'monthly_check'] }}"
 
 action:
   - choose:
-      # Cas 1 : Vanne débranchée/dévissée
+      # =========================
+      # 🔍 VÉRIFICATION MANUELLE
+      # =========================
       - conditions:
-          - condition: trigger
-            id: unmounted
+          - condition: template
+            value_template: "{{ is_manual }}"
         sequence:
+          - service: logbook.log
+            data:
+              name: "Surveillance Vanne Danfoss"
+              message: >
+                ▶️ Démarrage vérification globale (manuel/périodique)
+                - platform: {{ trigger_platform }}
+                - id: {{ trigger_id }}
+                - entity: {{ trigger_entity }}
+          - service: system_log.write
+            data:
+              level: info
+              message: >
+                [Danfoss Ally] Start global check | platform={{ trigger_platform }} id={{ trigger_id }} entity={{ trigger_entity }}
+          - condition: template
+            value_template: "{{ trigger.id is not defined or trigger.id != 'monthly_check' or (verification_periodique and now().day == 1) }}"
+          - repeat:
+              for_each: "{{ vannes_list }}"
+              sequence:
+                - variables:
+                    current_vanne: "{{ repeat.item }}"
+                    current_nom: "{{ state_attr(repeat.item, 'friendly_name') }}"
+                    current_state: "{{ states(repeat.item) }}"
+
+                - service: logbook.log
+                  data:
+                    name: "Surveillance Vanne Danfoss"
+                    message: >
+                      🔎 Contrôle vanne: {{ current_nom }}
+                      - entity: {{ current_vanne }}
+                      - state: {{ current_state }}
+                - service: system_log.write
+                  data:
+                    level: info
+                    message: >
+                      [Danfoss Ally] Check valve | name={{ current_nom }} entity={{ current_vanne }} state={{ current_state }}
+
+                - choose:
+                    # Vanne débranchée détectée
+                    - conditions:
+                        - condition: template
+                          value_template: "{{ current_state == 'off' }}"
+                      sequence:
+                        - service: system_log.write
+                          data:
+                            level: warning
+                            message: >
+                              [Danfoss Ally] UNMOUNTED detected | name={{ current_nom }} entity={{ current_vanne }}
+                        - service: "{{ notify_service }}"
+                          data:
+                            title: "⚠️ VANNE DÉBRANCHÉE"
+                            message: >
+                              📍 {{ current_nom }}
+                              🔧 VANNE DÉMONTÉE DÉTECTÉE
+                            data:
+                              tag: "vanne_{{ current_vanne }}_unmounted"
+                              notification_icon: mdi:radiator-off
+                              push:
+                                sound:
+                                  name: default
+                                  critical: 1
+                                  volume: 1.0
+                              ttl: 0
+                              priority: high
+                              clickAction: /chauffage-overview/
+                              url: /chauffage-overview/
+
+                        - service: logbook.log
+                          data:
+                            name: "Surveillance Vanne Danfoss"
+                            message: "La vanne {{ current_nom }} a été détectée comme débranchée"
+                            entity_id: "{{ current_vanne }}"
+
+                    # Vanne inaccessible détectée
+                    - conditions:
+                        - condition: template
+                          value_template: "{{ current_state == 'unavailable' }}"
+                      sequence:
+                        - service: system_log.write
+                          data:
+                            level: warning
+                            message: >
+                              [Danfoss Ally] UNAVAILABLE detected | name={{ current_nom }} entity={{ current_vanne }}
+                        - service: "{{ notify_service }}"
+                          data:
+                            title: "🔴 VANNE INACCESSIBLE"
+                            message: >
+                              📍 {{ current_nom }}
+                              📡 PERTE DE CONNEXION
+
+                # États OK: trace visible sans notif
+                - choose:
+                    - conditions:
+                        - condition: template
+                          value_template: "{{ current_state not in ['off','unavailable'] }}"
+                      sequence:
+                        - service: system_log.write
+                          data:
+                            level: debug
+                            message: >
+                              [Danfoss Ally] OK | name={{ current_nom }} entity={{ current_vanne }} state={{ current_state }}
+                            data:
+                              tag: "vanne_{{ current_vanne }}_unavailable"
+                              notification_icon: mdi:access-point-network-off
+                              push:
+                                sound:
+                                  name: default
+                                  critical: 1
+                                  volume: 1.0
+                              ttl: 0
+                              priority: high
+                              clickAction: /chauffage-overview/
+                              url: /chauffage-overview/
+
+                        - service: logbook.log
+                          data:
+                            name: "Surveillance Vanne Danfoss"
+                            message: "La vanne {{ current_nom }} est inaccessible"
+                            entity_id: "{{ current_vanne }}"
+
+      # =========================
+      # 🚨 VANNE DÉBRANCHÉE (AUTOMATIQUE)
+      # =========================
+      - conditions:
+          - condition: template
+            value_template: "{{ not is_manual and trigger.id == 'unmounted' }}"
+        sequence:
+          - service: logbook.log
+            data:
+              name: "Surveillance Vanne Danfoss"
+              message: >
+                🚨 Détection automatique: vanne débranchée
+                - {{ nom }} ({{ vanne }})
+                - platform: {{ trigger_platform }} | id: {{ trigger_id }}
+          - service: system_log.write
+            data:
+              level: warning
+              message: >
+                [Danfoss Ally] Auto UNMOUNTED | name={{ nom }} entity={{ vanne }}
           - service: "{{ notify_service }}"
             data:
               title: "⚠️ VANNE DÉBRANCHÉE"
               message: >
+                📍 {{ nom }}
                 🔧 VANNE DÉMONTÉE DÉTECTÉE
-                📍 {{ vanne_name }}
 
-                Le capteur de montage indique que la vanne n'est plus installée correctement.
-
-                ✅ Vérifiez que :
-                • La vanne est bien vissée sur le radiateur
-                • Elle n'est pas tombée
-                • Le bouton central a été pressé pour lancer la calibration
               data:
-                tag: "vanne_{{ vanne_name | slugify }}_unmounted"
+                tag: "vanne_{{ vanne }}_unmounted"
                 notification_icon: mdi:radiator-off
                 push:
                   sound:
@@ -182,36 +353,43 @@ action:
                     volume: 1.0
                 ttl: 0
                 priority: high
+                clickAction: /chauffage-overview/
+                url: /chauffage-overview/
 
           - service: logbook.log
             data:
               name: "Surveillance Vanne Danfoss"
-              message: "La vanne {{ vanne_name }} a été détectée comme débranchée"
-              entity_id: !input vanne_entity
+              message: "La vanne {{ nom }} a été détectée comme débranchée"
+              entity_id: "{{ vanne }}"
 
-      # Cas 2 : Vanne inaccessible
+      # =========================
+      # 🔴 VANNE INACCESSIBLE (AUTOMATIQUE)
+      # =========================
       - conditions:
-          - condition: trigger
-            id: unavailable
           - condition: template
-            value_template: !input check_unavailable
+            value_template: "{{ not is_manual and trigger.id == 'unavailable' }}"
         sequence:
+          - service: logbook.log
+            data:
+              name: "Surveillance Vanne Danfoss"
+              message: >
+                🚨 Détection automatique: vanne inaccessible
+                - {{ nom }} ({{ vanne }})
+                - platform: {{ trigger_platform }} | id: {{ trigger_id }}
+          - service: system_log.write
+            data:
+              level: warning
+              message: >
+                [Danfoss Ally] Auto UNAVAILABLE | name={{ nom }} entity={{ vanne }}
           - service: "{{ notify_service }}"
             data:
               title: "🔴 VANNE INACCESSIBLE"
               message: >
+                📍 {{ nom }}
                 📡 PERTE DE CONNEXION
-                📍 {{ vanne_name }}
-                ⏱️ Hors ligne depuis {{ unavailable_delay }} min
 
-                ⚠️ Causes possibles :
-                • Pile faible ou déchargée
-                • Problème de connexion Zigbee
-                • Vanne hors de portée du réseau
-
-                ➡️ Vérifiez l'état de la vanne et sa connexion.
               data:
-                tag: "vanne_{{ vanne_name | slugify }}_unavailable"
+                tag: "vanne_{{ vanne }}_unavailable"
                 notification_icon: mdi:access-point-network-off
                 push:
                   sound:
@@ -220,9 +398,73 @@ action:
                     volume: 1.0
                 ttl: 0
                 priority: high
+                clickAction: /chauffage-overview/
+                url: /chauffage-overview/
 
           - service: logbook.log
             data:
               name: "Surveillance Vanne Danfoss"
-              message: "La vanne {{ vanne_name }} est inaccessible"
-              entity_id: !input vanne_entity
+              message: "La vanne {{ nom }} est inaccessible"
+              entity_id: "{{ vanne }}"
+
+      # =========================
+      # ✅ RETOUR À LA NORMALE - VANNE REMONTÉE
+      # =========================
+      - conditions:
+          - condition: template
+            value_template: "{{ not is_manual and trigger.id == 'retour_monte' }}"
+        sequence:
+          - service: logbook.log
+            data:
+              name: "Surveillance Vanne Danfoss"
+              message: >
+                ✅ Retour à la normale: vanne remontée
+                - {{ nom }} ({{ vanne }})
+                - platform: {{ trigger_platform }} | id: {{ trigger_id }}
+          - service: system_log.write
+            data:
+              level: info
+              message: >
+                [Danfoss Ally] Auto back to normal (mounted) | name={{ nom }} entity={{ vanne }}
+          - service: "{{ notify_service }}"
+            data:
+              title: "✅ Vanne remontée"
+              message: >
+                🟢 La vanne est de nouveau correctement installée.
+                📍 {{ nom }}
+              data:
+                tag: "vanne_{{ vanne }}_unmounted"
+                notification_icon: mdi:radiator
+                clickAction: /chauffage-overview/
+                url: /chauffage-overview/
+
+      # =========================
+      # ✅ RETOUR EN LIGNE
+      # =========================
+      - conditions:
+          - condition: template
+            value_template: "{{ not is_manual and trigger.id == 'retour_ligne' }}"
+        sequence:
+          - service: logbook.log
+            data:
+              name: "Surveillance Vanne Danfoss"
+              message: >
+                ✅ Retour à la normale: vanne rétablie
+                - {{ nom }} ({{ vanne }})
+                - platform: {{ trigger_platform }} | id: {{ trigger_id }}
+          - service: system_log.write
+            data:
+              level: info
+              message: >
+                [Danfoss Ally] Auto back online | name={{ nom }} entity={{ vanne }}
+          - service: "{{ notify_service }}"
+            data:
+              title: "✅ Vanne rétablie"
+              message: >
+                🟢 La vanne est de nouveau en ligne.
+                📍 {{ nom }}
+              data:
+                tag: "vanne_{{ vanne }}_unavailable"
+                notification_icon: mdi:radiator
+                clickAction: /chauffage-overview/
+                url: /chauffage-overview/
