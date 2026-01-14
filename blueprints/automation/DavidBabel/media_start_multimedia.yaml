@@ -1,10 +1,10 @@
-# Version: 1.0.2
-# 🧪 to test : working on multimedia
+# Version: 1.0.3
+# 🧪 to test : chatgpt proposal
 # Appartement: Carmes
 blueprint:
   name: "Contrôle Cinéma Epson & Shield"
   description: >
-    Version: 1.0.2
+    Version: 1.0.3
     📽️ Allume le projecteur avec la Shield et l'éteint (double clic) via la Shield ou un bouton.
   domain: automation
   input:
@@ -22,8 +22,8 @@ blueprint:
       description: "Une ou plusieurs entités à allumer/éteindre (ex: projecteur, ampli)."
       default:
         entity_id:
-          - media_player.epson_eh_tw7100
-          - media_player.denon_avr_x2800h_3
+          - media_player.broadlink_epson_eh_tw7100
+          - media_player.broadlink_denon_avr_x2800h
       selector:
         target:
           entity:
@@ -45,25 +45,25 @@ trigger:
     from: ["off", "standby"]
     to: "on"
     id: "allumage"
-  # Trigger Bouton Hue (ON)
-  - platform: device
-    device_id: !input hue_remote_device
-    domain: hue
-    type: remote_button_short_release
-    subtype: turn_on
-    id: "allumage"
-  # Trigger Bouton Hue (double clic ON)
-  - platform: device
-    device_id: !input hue_remote_device
-    domain: hue
-    type: remote_button_double_press
-    subtype: turn_on
-    id: "extinction"
   # Trigger Shield OFF
   - platform: state
     entity_id: !input shield_player
     from: "on"
     to: ["off", "standby"]
+    id: "extinction"
+  # Trigger Bouton Hue (ON)
+  - platform: device
+    device_id: !input hue_remote_device
+    domain: hue
+    type: short_release
+    subtype: 1
+    id: "allumage"
+  # Trigger Bouton Hue (long press ON)
+  - platform: device
+    device_id: !input hue_remote_device
+    domain: hue
+    type: long_press
+    subtype: 1
     id: "extinction"
 
 action:
