@@ -12,7 +12,7 @@ _Généré automatiquement par pre-commit_
 ✅ `rebooted_ha.yaml` : # ✅ working
 ✅ `security_alerts.yaml` : # ✅ working
 🧪 `smart_heating_reset.yaml` : # 🧪 to test : validate scripts
-🧪 `smart_heating_scheduler.yaml` : # 🧪 to test : pending
+🧪 `smart_heating_scheduler.yaml` : # 🧪 to test : many update
 ✅ `warning_beacon_forgotten.yaml` : # ✅ working
-🧪 `warning_danfoss_ally_unplug.yaml` : # 🧪 to test : pending
-🧪 `warning_nobody_detected_for_long.yaml` : # 🧪 to test : pending
+🧪 `warning_danfoss_ally_unplug.yaml` : # 🧪 to test : many update
+🧪 `warning_nobody_detected_for_long.yaml` : # 🧪 to test : many update

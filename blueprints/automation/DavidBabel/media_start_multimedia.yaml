@@ -1,16 +1,17 @@
-# Version: 1.0.1
-# 🧪 to test : many update
+# Version: 1.0.2
+# 🧪 to test : working on multimedia
 # Appartement: Carmes
 blueprint:
   name: "Contrôle Cinéma Epson & Shield"
   description: >
-    "Version: 1.0.0
-    *📽️ Allume le projecteur avec la Shield et l'éteint (double clic) via la Shield ou un bouton."
+    Version: 1.0.2
+    📽️ Allume le projecteur avec la Shield et l'éteint (double clic) via la Shield ou un bouton.
   domain: automation
   input:
     shield_player:
       name: "NVIDIA Shield"
       description: "L'entité Media Player de votre Shield."
+      default: media_player.nvidia_shield
       selector:
         entity:
           filter:
@@ -18,20 +19,22 @@ blueprint:
             device_class: receiver # Souvent le cas pour Android TV
     projecteur_broadlink:
       name: "Projecteur (Broadlink)"
-      description: "L'entité créée par Broadlink Manager."
+      description: "Une ou plusieurs entités à allumer/éteindre (ex: projecteur, ampli)."
+      default:
+        entity_id:
+          - media_player.epson_eh_tw7100
+          - media_player.denon_avr_x2800h_3
       selector:
-        entity:
-          filter:
+        target:
+          entity:
             domain: media_player
-    bouton_externe:
-      name: "Bouton d'extinction (Optionnel)"
-      description: "Un bouton ou sensor pour éteindre manuellement."
-      default: []
+    hue_remote_device:
+      name: "Bouton Philips Hue"
+      description: "Le device du bouton Hue (déclenchement court sur ON)."
+      default: 2d36d0122f150f4c3fc80db0f293d4c0
       selector:
-        entity:
-          filter:
-            # On filtre sur les sensors d'action (Z2M)
-            domain: sensor
+        device:
+          integration: hue
 
 mode: restart
 
@@ -42,15 +45,25 @@ trigger:
     from: ["off", "standby"]
     to: "on"
     id: "allumage"
+  # Trigger Bouton Hue (ON)
+  - platform: device
+    device_id: !input hue_remote_device
+    domain: hue
+    type: remote_button_short_release
+    subtype: turn_on
+    id: "allumage"
+  # Trigger Bouton Hue (double clic ON)
+  - platform: device
+    device_id: !input hue_remote_device
+    domain: hue
+    type: remote_button_double_press
+    subtype: turn_on
+    id: "extinction"
   # Trigger Shield OFF
   - platform: state
     entity_id: !input shield_player
     from: "on"
     to: ["off", "standby"]
-    id: "extinction"
-  # Trigger Bouton Manuel
-  - platform: state
-    entity_id: !input bouton_externe
     id: "extinction"
 
 action:
@@ -60,17 +73,14 @@ action:
             id: "allumage"
         sequence:
           - action: media_player.turn_on
-            target:
-              entity_id: !input projecteur_broadlink
+            target: !input projecteur_broadlink
       - conditions:
           - condition: trigger
             id: "extinction"
         sequence:
           # Séquence spécifique Epson
           - action: media_player.turn_off
-            target:
-              entity_id: !input projecteur_broadlink
-          - delay: "00:00:01"
+            target: !input projecteur_broadlink
+          - delay: "00:00:02"
           - action: media_player.turn_off
-            target:
-              entity_id: !input projecteur_broadlink
+            target: !input projecteur_broadlink
