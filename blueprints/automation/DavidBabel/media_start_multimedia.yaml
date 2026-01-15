@@ -1,10 +1,10 @@
-# Version: 1.0.9
-# 🧪 to test : working with small bugs
+# Version: 1.0.11
+# 🧪 to test : working
 # Appartement: Carmes
 blueprint:
   name: "Contrôle Cinéma Epson & Shield"
   description: >
-    Version: 1.0.9
+    Version: 1.0.11
     📽️ Allume le projecteur Epson et l’ampli Denon via la Shield ou un bouton Hue,
     et les éteint (double OFF Epson).
 
@@ -61,6 +61,19 @@ blueprint:
         entity:
           filter:
             integration: hue
+    broadlink_lights_off_on_start:
+      name: "Lampes Broadlink à éteindre au démarrage"
+      description: >
+        Liste de lampes (template lights Broadlink Manager) à forcer sur OFF au démarrage.
+        Sélectionne ici tes `light.broadlink_lights_command_*` (et non les `input_boolean.*`).
+      default:
+        - light.broadlink_lights_command_salon_b
+        - light.broadlink_lights_command_salon_c
+      selector:
+        entity:
+          multiple: true
+          filter:
+            domain: light
 
 mode: restart
 
@@ -94,6 +107,7 @@ variables:
     }}
 
 trigger:
+  # Shield
   # Trigger Shield ON
   - platform: state
     entity_id: !input shield_player
@@ -106,6 +120,8 @@ trigger:
     from: "on"
     to: ["off", "standby"]
     id: "extinction"
+
+  # Smart Button
   # Trigger Bouton Hue (ON)
   - platform: device
     device_id: !input hue_remote_device
@@ -120,7 +136,7 @@ trigger:
     type: long_press
     subtype: 1
     id: "extinction"
-  # Trigger Bouton Hue (long press ON)
+  # Trigger Bouton Hue (double press)
   - platform: device
     device_id: !input hue_remote_device
     domain: hue
@@ -141,6 +157,9 @@ action:
           - condition: trigger
             id: "allumage"
         sequence:
+          - action: light.turn_off
+            target:
+              entity_id: !input broadlink_lights_off_on_start
           - action: light.turn_on
             target:
               entity_id: !input lights_on_target
