@@ -1,10 +1,10 @@
-# Version: 1.0.11
-# 🧪 to test : working
+# Version: 1.0.12
+# 🧪 to test : update media automation
 # Appartement: Carmes
 blueprint:
   name: "Contrôle Cinéma Epson & Shield"
   description: >
-    Version: 1.0.11
+    Version: 1.0.12
     📽️ Allume le projecteur Epson et l’ampli Denon via la Shield ou un bouton Hue,
     et les éteint (double OFF Epson).
 
@@ -201,15 +201,50 @@ action:
           - action: switch.turn_off
             target:
               entity_id: !input epson_switch
-          - delay: "00:00:02"
+          - delay: "00:00:01"
           - action: switch.turn_off
             target:
               entity_id: !input epson_switch
-          - delay: "00:00:02"
+          - delay: "00:00:01"
           - action: switch.turn_off
             target:
               entity_id: !input epson_switch
-          - delay: "00:00:02"
+          - delay: "00:00:01"
           - action: switch.turn_off
             target:
               entity_id: !input epson_switch
+# Tentative prompt :
+
+# j'aimerais que le double press toggle les lumieres sans lancer les autres , là short_release est lancé en meme temps je ne veux pas, je ne sais pas ce qu'il faut changer, si il faut mettre autre chose que short_release
+# Ou est ce qu'il faut faire une exclusion ou donner une prio je ne sais pas
+
+# en tous cas cette technique a l'air de fonctionner :
+
+# choose:
+#   - conditions:
+#       - condition: trigger
+#         id:
+#           - up-single
+#     sequence:
+#       - wait_for_trigger:
+#           - platform: device
+#             domain: mqtt
+#             device_id: 51c91a63f296806cf37c90e00a715de3
+#             type: action
+#             subtype: "on"
+#             discovery_id: 0x3425b4fffe9d83d1 action_on
+#         timeout:
+#           hours: 0
+#           minutes: 0
+#           seconds: 1
+#           milliseconds: 0
+#         continue_on_timeout: true
+#       - if:
+#           - condition: template
+#             value_template: "{{  wait.trigger == none }}"
+#         then:
+#            << HERE GOES SINGLE CLICK ACTIONS >>
+#         else:
+#            << HERE GOES DOUBLE CLICK ACTIONS >>
+
+#            C'est juste pour t'en inspirer evidement c'est un exemple que j'ai trouvé qui n'a rien a voir mais qui marche
