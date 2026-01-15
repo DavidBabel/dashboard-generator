@@ -1,11 +1,10 @@
-# Version: 1.0.5
-# 🧪 to test : first working example
-# 🧪 Contrôle Shield + bouton Hue -> switches Broadlink Manager (b64)
+# Version: 1.0.9
+# 🧪 to test : working with small bugs
 # Appartement: Carmes
 blueprint:
   name: "Contrôle Cinéma Epson & Shield"
   description: >
-    Version: 1.0.5
+    Version: 1.0.9
     📽️ Allume le projecteur Epson et l’ampli Denon via la Shield ou un bouton Hue,
     et les éteint (double OFF Epson).
 
@@ -37,6 +36,16 @@ blueprint:
         entity:
           filter:
             domain: switch
+    hue_sync_box_devices:
+      name: "Hue Sync Box (device)"
+      description: >
+        Sélectionne une ou plusieurs Philips Hue Play HDMI Sync Box.
+        Les entités seront détectées automatiquement depuis le device (select.* + switch.*)
+        en cherchant "espace_de_divertissement" et "synchronisation_des_lumieres".
+      default: a50bbd2d66561ff71c8b00d205dce5cb
+      selector:
+        device:
+          integration: huesyncbox
     hue_remote_device:
       name: "Bouton Philips Hue"
       description: "Le device du bouton Hue (déclenchement court sur ON)."
@@ -44,8 +53,45 @@ blueprint:
       selector:
         device:
           integration: hue
+    lights_on_target:
+      name: "Lumière(s) à allumer (double press)"
+      description: "Lumière(s) Hue à allumer quand tu fais un double press."
+      default: light.salon
+      selector:
+        entity:
+          filter:
+            integration: hue
 
 mode: restart
+
+variables:
+  sync_box_devices: !input hue_sync_box_devices
+  sync_box_entities: >-
+    {% set ns = namespace(out=[]) %}
+    {% if sync_box_devices is string and sync_box_devices | length > 0 %}
+      {% set ns.out = device_entities(sync_box_devices) %}
+    {% elif sync_box_devices is iterable %}
+      {% for d in sync_box_devices %}
+        {% if d is string and d | length > 0 %}
+          {% set ns.out = ns.out + device_entities(d) %}
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+    {{ ns.out }}
+  hue_sync_box_entertainment_select_entities: >-
+    {{
+      sync_box_entities
+        | select('match', '^select\\.')
+        | select('search', 'espace_de_divertissement')
+        | list
+    }}
+  hue_sync_box_light_sync_switch_entities: >-
+    {{
+      sync_box_entities
+        | select('match', '^switch\\.')
+        | select('search', 'synchronisation_des_lumieres')
+        | list
+    }}
 
 trigger:
   # Trigger Shield ON
@@ -74,13 +120,30 @@ trigger:
     type: long_press
     subtype: 1
     id: "extinction"
+  # Trigger Bouton Hue (long press ON)
+  - platform: device
+    device_id: !input hue_remote_device
+    domain: hue
+    type: double_press
+    subtype: 1
+    id: "lights_on"
 
 action:
   - choose:
       - conditions:
           - condition: trigger
+            id: "lights_on"
+        sequence:
+          - action: light.toggle
+            target:
+              entity_id: !input lights_on_target
+      - conditions:
+          - condition: trigger
             id: "allumage"
         sequence:
+          - action: light.turn_on
+            target:
+              entity_id: !input lights_on_target
           - action: switch.turn_on
             target:
               entity_id: !input epson_switch
@@ -88,6 +151,24 @@ action:
             target:
               entity_id: !input denon_switch
           - delay: "00:00:10"
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ hue_sync_box_entertainment_select_entities | length > 0 }}"
+                sequence:
+                  - action: select.select_option
+                    target:
+                      entity_id: "{{ hue_sync_box_entertainment_select_entities }}"
+                    data:
+                      option: "Vidéo Projecteur"
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ hue_sync_box_light_sync_switch_entities | length > 0 }}"
+                sequence:
+                  - action: switch.turn_on
+                    target:
+                      entity_id: "{{ hue_sync_box_light_sync_switch_entities }}"
 
       - conditions:
           - condition: trigger
