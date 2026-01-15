@@ -1,6 +1,8 @@
+# Appartement: Autre
+https://raw.githubusercontent.com/DavidBabel/ha/master/blueprints/automation/DavidBabel/media_start_multimedia.yaml
+
 # Appartement: Carmes
 https://raw.githubusercontent.com/DavidBabel/ha/master/blueprints/automation/DavidBabel/healthcheck_ha_distants.yaml
-https://raw.githubusercontent.com/DavidBabel/ha/master/blueprints/automation/DavidBabel/media_start_multimedia.yaml
 
 # Appartement: Romains
 https://raw.githubusercontent.com/DavidBabel/ha/master/blueprints/automation/DavidBabel/auto_lights_off.yaml
