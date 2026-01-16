@@ -1,10 +1,10 @@
-# Version: 1.0.20
-# 🧪 to test : prompt modif de timing
+# Version: 1.1.1
+# 🧪 to test : fix deploiement, try sur le bip de la telecommande
 # Appartement: Carmes
 blueprint:
   name: "Contrôle Cinéma Epson & Shield"
   description: >
-    Version: 1.0.20
+    Version: 1.1.1
     📽️ Allume le projecteur Epson et l’ampli Denon via la Shield ou un bouton Hue,
     et les éteint (double OFF Epson).
 
@@ -46,19 +46,6 @@ blueprint:
         entity:
           filter:
             domain: cover
-    projector_screen_down_seconds:
-      name: "Durée descente écran (s)"
-      description: >
-        Durée (en secondes) entre le `open_cover` et le `stop_cover` pour arrêter la descente.
-        Les décimales sont possibles (selon la locale, tu peux saisir 10,5).
-      default: 20
-      selector:
-        number:
-          min: 0
-          max: 30
-          step: 0.1
-          unit_of_measurement: s
-          mode: slider
     hue_sync_box_devices:
       name: "Hue Sync Box (device)"
       description: >
@@ -111,7 +98,6 @@ mode: restart
 variables:
   sync_box_devices: !input hue_sync_box_devices
   entertainment_option: !input hue_sync_box_entertainment_option
-  screen_down_seconds: !input projector_screen_down_seconds
   sync_box_entities: >-
     {% set ns = namespace(out=[]) %}
     {% if sync_box_devices is string and sync_box_devices | length > 0 %}
@@ -183,6 +169,15 @@ action:
           - condition: trigger
             id: "smart_toggle"
         sequence:
+          # Le bip de la télécommande ne marche pas pour l'instant
+          # - action: androidtv.adb_command
+          #   data:
+          #     command: >-
+          #       am start -a android.intent.action.VIEW -d -n
+          #       com.nvidia.remotelocator/.ShieldRemoteLocatorActivity
+          #   target:
+          #     entity_id: !input shield_player
+          #   continue_on_error: true
           - choose:
               - conditions:
                   - condition: state
@@ -206,7 +201,7 @@ action:
                     target:
                       entity_id: !input projector_screen_cover
                   - delay:
-                      seconds: "{{ screen_down_seconds | float(20) }}"
+                      seconds: 33
                   - action: cover.stop_cover
                     target:
                       entity_id: !input projector_screen_cover
@@ -293,7 +288,7 @@ action:
                     target:
                       entity_id: !input projector_screen_cover
                   - delay:
-                      seconds: "{{ (screen_down_seconds | float(20)) + 3 }}"
+                      seconds: 33
                   - action: cover.stop_cover
                     target:
                       entity_id: !input projector_screen_cover
@@ -302,6 +297,14 @@ action:
                     target:
                       entity_id: !input denon_switch
                   - delay: "00:00:07"
+                  - action: switch.turn_off
+                    target:
+                      entity_id: !input epson_switch
+                  - delay: "00:00:01"
+                  - action: switch.turn_off
+                    target:
+                      entity_id: !input epson_switch
+                  - delay: "00:00:01"
                   - action: switch.turn_off
                     target:
                       entity_id: !input epson_switch
