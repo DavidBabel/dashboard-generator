@@ -1,3 +1,5 @@
+NE TE PERMET JAMAIS DE BUMP LES VERSIONS DES FICHIERS POUR MOI
+
 # Copilot Instructions - Home Assistant Blueprints Repository
 
 ## 🎯 Objectif du Repository
