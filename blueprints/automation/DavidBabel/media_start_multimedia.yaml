@@ -1,10 +1,10 @@
-# Version: 1.1.1
-# 🧪 to test : fix deploiement, try sur le bip de la telecommande
+# Version: 1.1.2
+# 🧪 to test : ajoute de toggle de securité pour le bouton hue
 # Appartement: Carmes
 blueprint:
   name: "Contrôle Cinéma Epson & Shield"
   description: >
-    Version: 1.1.1
+    Version: 1.1.2
     📽️ Allume le projecteur Epson et l’ampli Denon via la Shield ou un bouton Hue,
     et les éteint (double OFF Epson).
 
@@ -148,12 +148,24 @@ trigger:
     type: short_release
     subtype: 1
     id: "smart_toggle"
+  - platform: device
+    device_id: !input hue_remote_device
+    domain: hue
+    type: short_release
+    subtype: 0
+    id: "smart_toggle"
   # Trigger Bouton Hue (appui long) -> toggle lumières
   - platform: device
     device_id: !input hue_remote_device
     domain: hue
     type: long_press
     subtype: 1
+    id: "lights_on"
+  - platform: device
+    device_id: !input hue_remote_device
+    domain: hue
+    type: long_press
+    subtype: 0
     id: "lights_on"
 
 action:
