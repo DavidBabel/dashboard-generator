@@ -1,10 +1,10 @@
-# Version: 1.2.0
-# ✅ working
+# Version: 1.2.1
+# 🧪 to test : install hooks
 # Appartement: Tous
 blueprint:
   name: "❤️ Health Check – Surveillance Connexion Prise Shelly"
   description: >
-    Version: 1.2.
+    Version: 1.2.1
     Envoie une alerte lorsqu'une prise Shelly est hors ligne pendant une durée configurable
     et notifie quand elle revient en ligne.
   domain: automation
