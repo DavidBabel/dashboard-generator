@@ -1,0 +1,182 @@
+# Version: 1.0.8
+# ✅ working
+# Appartement: Tous
+blueprint:
+  name: "🛡️🔥 Urgence Maison – Multi-capteurs (Eau / Fumée / Autre)"
+  description: >
+    Version: 1.0.8
+    Alerte critique avec rappel périodique et notification de retour à la normale.
+    Compatible iOS (critique) et Android. Anti-spam intégré.
+  domain: automation
+  # ==============================================================================
+  # INPUTS - Configuration des paramètres du blueprint
+  # ==============================================================================
+  input:
+    # --------------------------------------------------------------------------
+    # Capteurs de danger : détecteurs de fuite d'eau, fumée, gaz, etc.
+    # Type attendu : binary_sensor.xxx (détecteurs de sécurité)
+    # Valeur attendue : on = danger détecté, off = normal
+    # --------------------------------------------------------------------------
+    capteurs:
+      name: 🚨 Capteurs de danger
+      description: Sélectionne un ou plusieurs capteurs (eau, fumée, gaz, etc.)
+      default:
+        - binary_sensor.detecteur_eau_engel_chauffe_eau_water_leak
+        - binary_sensor.detecteur_eau_engel_cuisine_water_leak
+        - binary_sensor.detecteur_eau_engel_salle_de_bains_water_leak
+        - binary_sensor.detecteur_fumee_engel_entree_smoke
+        - binary_sensor.detecteur_eau_romains_salle_de_bains_water_leak
+        - binary_sensor.detecteur_eau_romains_cuisine_water_leak
+        - binary_sensor.detecteur_eau_romains_douche_water_leak
+        - binary_sensor.detecteur_fumee_romains_cellier_smoke
+      selector:
+        entity:
+          domain: binary_sensor
+          multiple: true
+
+    # --------------------------------------------------------------------------
+    # Intervalle de rappel : fréquence des alertes répétitives
+    # Type attendu : nombre entier
+    # Valeur attendue : durée en minutes (recommandé : 10)
+    # --------------------------------------------------------------------------
+    delai_rappel:
+      name: 🔁 Intervalle de rappel
+      description: Temps entre deux notifications tant que le danger persiste
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 60
+          unit_of_measurement: minutes
+
+    # --------------------------------------------------------------------------
+    # Device de notification : appareil mobile recevant les alertes critiques
+    # Type attendu : device avec l'app mobile Home Assistant installée
+    # --------------------------------------------------------------------------
+    notify_device:
+      name: 📱 Device à notifier
+      description: >
+        Le device doit utiliser l'application mobile officielle Home Assistant.
+      selector:
+        device:
+          filter:
+            integration: mobile_app
+
+# ==============================================================================
+# MODE PARALLEL : Permet de gérer plusieurs alertes simultanément
+# ==============================================================================
+mode: parallel
+max: 10
+
+# ==============================================================================
+# TRIGGERS : Événements qui déclenchent l'automation
+# ==============================================================================
+trigger:
+  # --------------------------------------------------------------------------
+  # Trigger 1 : Danger détecté (capteur passe à on)
+  # Se déclenche quand : fuite d'eau, fumée, ou autre danger détecté
+  # Objectif : lancer immédiatement les alertes critiques répétitives
+  # --------------------------------------------------------------------------
+  - platform: state
+    entity_id: !input capteurs
+    to: "on"
+    id: alerte
+
+  # --------------------------------------------------------------------------
+  # Trigger 2 : Retour à la normale (capteur passe à off)
+  # Se déclenche quand : le danger est écarté
+  # Objectif : notifier que la situation est revenue à la normale
+  # Note : Le délai 'for' évite les fausses notifications au redémarrage de HA
+  # --------------------------------------------------------------------------
+  - platform: state
+    entity_id: !input capteurs
+    to: "off"
+    for:
+      minutes: 2
+    id: retour
+
+# ==============================================================================
+# VARIABLES : Préparation des données pour les notifications
+# ==============================================================================
+variables:
+  capteur: "{{ trigger.entity_id }}"
+  nom: "{{ state_attr(trigger.entity_id, 'friendly_name') }}"
+  rappel: !input delai_rappel
+  notify_device: !input notify_device
+  notify_service: >
+    notify.mobile_app_{{ device_attr(notify_device, 'name')
+      | lower
+      | replace(' ', '_')
+      | replace('-', '_') }}
+
+action:
+  # Vérifier que Home Assistant est allumé depuis au moins 5 minutes
+  - condition: template
+    value_template: >
+      {{ (as_timestamp(now()) - as_timestamp(state_attr('homeassistant', 'last_boot'))) > 300 }}
+
+  - choose:
+      # =========================
+      # 🚨 ALERTE ACTIVE
+      # =========================
+      - conditions:
+          - condition: trigger
+            id: alerte
+        sequence:
+          - repeat:
+              while:
+                - condition: template
+                  value_template: "{{ is_state(capteur, 'on') }}"
+              sequence:
+                - service: "{{ notify_service }}"
+                  data:
+                    title: "🚨 ALERTE MAISON"
+                    message: >
+                      {% if 'smoke' in capteur %}
+                      🔥 FUMÉE DÉTECTÉE
+                      {% elif 'water' in capteur or 'leak' in capteur %}
+                      💧 FUITE D’EAU DÉTECTÉE
+                      {% else %}
+                      ⚠️ DANGER DÉTECTÉ
+                      {% endif %}
+                      📍 {{ nom }}
+                    data:
+                      tag: "urgence_{{ capteur }}"
+                      notification_icon: mdi:alert
+                      push:
+                        sound:
+                          name: default
+                          critical: 1
+                          volume: 1.0
+                      ttl: 0
+                      priority: high
+                      url: /dashboard-alerts/
+                      clickAction: /dashboard-alerts/
+
+                - delay:
+                    minutes: "{{ rappel | int }}"
+
+      # =========================
+      # ✅ RETOUR À LA NORMALE
+      # =========================
+      - conditions:
+          - condition: trigger
+            id: retour
+        sequence:
+          - service: "{{ notify_service }}"
+            data:
+              title: "✅ Situation rétablie"
+              message: >
+                {% if 'smoke' in capteur %}
+                🔥 Fin de l’alerte fumée
+                {% elif 'water' in capteur or 'leak' in capteur %}
+                💧 Fin de l’alerte fuite d’eau
+                {% else %}
+                ⚠️ Fin de l’alerte
+                {% endif %}
+                📍 {{ nom }}
+              data:
+                tag: "urgence_{{ capteur }}"
+                notification_icon: mdi:check-circle
+                url: /dashboard-alerts/
+                clickAction: /dashboard-alerts/

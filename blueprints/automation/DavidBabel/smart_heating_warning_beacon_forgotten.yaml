@@ -1,0 +1,164 @@
+# Version: 1.3.2
+# ✅ working
+# Appartement: Tous
+blueprint:
+  name: "🕵️ Warning - Beacon abandonné dans l'appartement 🔵 PAR CHAMBRE"
+  description: >
+    Version: 1.3.2
+    Désactive complètement le chauffage (preset frost) si le beacon est immobile.
+    Le scheduler VT est suspendu pendant l'arrêt.
+  domain: automation
+  # ==============================================================================
+  # INPUTS - Configuration des paramètres du blueprint
+  # ==============================================================================
+  input:
+    # --------------------------------------------------------------------------
+    # Capteur de présence : pourcentage de présence calculé
+    # Type attendu : sensor.xxx
+    # Valeur attendue : pourcentage entre 0 et 100 (0 = jamais présent, 100 = toujours présent)
+    # --------------------------------------------------------------------------
+    ratio_sensor:
+      name: 📊 Capteur de présence (%)
+      description: >
+        Capteur qui expose directement un pourcentage de présence (0–100).
+        Exemple : sensor.locataire_engel_chambre_nord_present_percent
+      default: sensor.locataire_engel_chambre_nord_present_percent
+      selector:
+        entity:
+          domain: sensor
+
+    # --------------------------------------------------------------------------
+    # Seuil de présence : pourcentage au-delà duquel on considère le beacon immobile
+    # Type attendu : input_number.xxx (Helper > Number)
+    # Valeur attendue : pourcentage entre 0 et 100 (recommandé : 95%)
+    # Créer via UI : Settings > Helpers > Create Helper > Number4
+    # --------------------------------------------------------------------------
+    input_seuil_percent:
+      name: 🎚️ Seuil de présence Config (%)
+      default: input_number.pourcentage_de_presence_beacon_abandonne
+      selector:
+        entity:
+          domain: input_number
+
+    # --------------------------------------------------------------------------
+    # Thermostat cible : VT à basculer en frost
+    # Type attendu : climate.xxx de l'intégration versatile_thermostat
+    # Valeur attendue : entité climat avec preset_mode = comfort / frost
+    # --------------------------------------------------------------------------
+    target_thermostat:
+      name: 🌡️ Versatile Thermostat
+      selector:
+        entity:
+          domain: climate
+          integration: versatile_thermostat
+
+    # --------------------------------------------------------------------------
+    # Appartement : identification de l'appartement
+    # Type attendu : sélection parmi les options définies
+    # Valeur attendue : emoji + nom d'appartement
+    # --------------------------------------------------------------------------
+    appartement:
+      name: 🏠 Appartement
+      default: "🟧 Engel"
+      selector:
+        select:
+          options:
+            - "🟧 Engel"
+            - "🟩 Romains"
+
+    # --------------------------------------------------------------------------
+    # Device de notification : appareil mobile recevant les alertes
+    # --------------------------------------------------------------------------
+    notify_device:
+      name: 📱 Device à notifier
+      description: >
+        Le device doit utiliser l'application mobile officielle Home Assistant.
+      selector:
+        device:
+          filter:
+            integration: mobile_app
+
+# ==============================================================================
+# VARIABLES : Préparation des données pour les conditions et actions
+# ==============================================================================
+variables:
+  ratio_ent: !input ratio_sensor
+  seuil_ent: !input input_seuil_percent
+  thermostat_ent: !input target_thermostat
+  appartement_input: !input appartement
+
+  # Extraction de l'identifiant de chambre depuis le thermostat
+  # Format: chauffage_vt_engel_chambre_nord → nord
+  # Format: chauffage_vt_engel_chambre_grande_droite → grande_droite
+  identifiant_chambre: >
+    {% set entity = thermostat_ent %}
+    {% set parts = entity.split('_') %}
+    {% set chambre_index = parts.index('chambre') if 'chambre' in parts else -1 %}
+    {% if chambre_index >= 0 and chambre_index < parts|length - 1 %}
+      {% set chambre_parts = parts[chambre_index + 1:] %}
+      {{ chambre_parts | join('_') }}
+    {% else %}
+      unknown
+    {% endif %}
+
+  # Construction de l'URL du dashboard
+  dashboard_url: >
+    /dashboard-chauffage/chambre_{{ identifiant_chambre }}
+
+  # Extraction du nom de la chambre pour affichage
+  chambre_nom: >
+    {% set chambre = identifiant_chambre %}
+    {% set mots = chambre.replace('_', ' ').split(' ') %}
+    {% set formatted = mots | map('capitalize') | join(' ') %}
+    {{ formatted }}
+
+  notify_device: !input notify_device
+  notify_service: >
+    notify.mobile_app_{{ device_attr(notify_device, 'name')
+      | lower
+      | replace(' ', '_')
+      | replace('-', '_') }}
+
+# ==============================================================================
+# TRIGGERS : Vérification périodique
+# ==============================================================================
+trigger:
+  # Vérification automatique chaque jour à 13h et 20h
+  - platform: time
+    id: check
+    at:
+      - "13:25:00"
+      - "20:25:00"
+
+# ==============================================================================
+# ACTIONS
+# ==============================================================================
+action:
+  - choose:
+      # ----------------------------------------------------------------------
+      # CAS 1 : Beacon immobile → Passage en frost
+      # ----------------------------------------------------------------------
+      - conditions:
+          - condition: template
+            value_template: "{{ states(ratio_ent) not in ['unknown', 'unavailable', ''] }}"
+          - condition: template
+            value_template: >
+              {% set ratio = states(ratio_ent) | float(0) %}
+              {% set seuil = states(seuil_ent) | float(95) %}
+              {{ ratio >= seuil }}
+        sequence:
+          - service: "{{ notify_service }}"
+            data:
+              title: "📶 Beacon {{ appartement_input }}"
+              message: >
+                📍 {{ chambre_nom }} Beacon Abandonné
+                🔒 Chauffage passé en mode Frost
+              data:
+                icon: mdi:snowflake-alert
+                url: "{{ dashboard_url }}"
+
+          - service: climate.set_preset_mode
+            target:
+              entity_id: !input target_thermostat
+            data:
+              preset_mode: frost

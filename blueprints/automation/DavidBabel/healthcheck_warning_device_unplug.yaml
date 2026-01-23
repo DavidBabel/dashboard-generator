@@ -1,0 +1,147 @@
+# Version: 1.2.4
+# ✅ working
+# Appartement: Tous
+blueprint:
+  name: "🕵️ Health Check (last_seen multi)"
+  description: >
+    Version: 1.2.4
+    Surveille une LISTE d'entités "last_seen" (ex: sensor.xxx_last_seen).
+    Si au moins une entité remonte à plus de X minutes, envoie UNE notification courte par entité.
+
+    Note: le contrôle est périodique (une fois par jour), car last_seen ne change pas quand un device se tait.
+  domain: automation
+  input:
+    appartement:
+      name: 🏠 Appartement
+      description: Sélectionnez l'appartement concerné
+      default: "🟧 Engel"
+      selector:
+        select:
+          options:
+            - "🟧 Engel"
+            - "🟩 Romains"
+            - "🟦 Carmes"
+
+    last_seen_entities:
+      name: 🕒 Entités last_seen
+      description: "Sélectionne une ou plusieurs entités timestamp last_seen (ex: sensor.xxx_last_seen)"
+      default:
+        - sensor.chauffage_engel_chambre_nord_last_seen
+        - sensor.chauffage_engel_chambre_sud_last_seen
+        - sensor.chauffage_engel_chambre_salon_last_seen
+        - sensor.chauffage_engel_salon_last_seen
+        - sensor.chauffage_engel_chambre_ouest_last_seen
+        - sensor.chauffage_romains_chambre_cuisine_last_seen
+        - sensor.chauffage_romains_chambre_cellier_last_seen
+        - sensor.chauffage_romains_chambre_balcon_last_seen
+        - sensor.chauffage_romains_chambre_grande_gauche_last_seen
+        - sensor.chauffage_romains_chambre_grande_droite_last_seen
+        - sensor.chauffage_romains_salle_de_bains_last_seen
+      selector:
+        entity:
+          multiple: true
+
+    max_age_minutes:
+      name: ⏱️ Seuil d'alerte (minutes)
+      description: Alerte si last_seen remonte à plus de X minutes.
+      default: 30
+      selector:
+        number:
+          min: 1
+          max: 240
+          unit_of_measurement: minutes
+
+    notify_device:
+      name: 📱 Device à notifier
+      description: Le device doit utiliser l'application mobile officielle Home Assistant.
+      selector:
+        device:
+          filter:
+            integration: mobile_app
+
+mode: restart
+
+variables:
+  appartement: !input appartement
+  appartement_key: "{{ appartement.split(' ', 1)[1] | lower }}"
+  last_seen_entities: !input last_seen_entities
+  max_age_minutes: !input max_age_minutes
+  notify_device: !input notify_device
+  notify_service: >
+    notify.mobile_app_{{ device_attr(notify_device, 'name')
+      | lower
+      | replace(' ', '_')
+      | replace('-', '_') }}
+  # iOS/APNS: tag court et stable par entité (les notifs se remplacent au lieu de spammer)
+  notification_tag_prefix: "danfoss_ls_{{ appartement_key }}"
+
+trigger:
+  - platform: time
+    at: "13:20:00"
+    id: periodic_check
+
+action:
+  - variables:
+      stale: >
+        {% set ns = namespace(items=[]) %}
+        {% for entity_id in (last_seen_entities | default([])) %}
+          {% set friendly = state_attr(entity_id, 'friendly_name') or entity_id %}
+          {% set friendly_clean = (friendly | string)
+            | regex_replace('(?i)\\s*last\\s*seen\\s*$', '')
+            | regex_replace('(?i)_last_seen$', '')
+            | regex_replace('\\s+$', '') %}
+          {% set raw = states(entity_id) %}
+          {% set ts = as_timestamp(raw, default=none) %}
+          {% if ts is not none %}
+            {% set age_s = (as_timestamp(now()) - ts) | float %}
+            {% if age_s >= ((max_age_minutes | float) * 60) %}
+              {% set ns.items = ns.items + [
+                {
+                  'entity_id': entity_id,
+                  'name': friendly_clean,
+                  'last_seen': raw,
+                  'age_minutes': (age_s / 60) | round(1)
+                }
+              ] %}
+            {% endif %}
+          {% else %}
+            {# Valeur non parsable -> on la considère KO #}
+            {% set ns.items = ns.items + [
+              {
+                'entity_id': entity_id,
+                'name': friendly_clean,
+                'last_seen': raw,
+                'age_minutes': none
+              }
+            ] %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.items }}
+
+  - condition: template
+    value_template: >
+      {{ (stale | count) > 0 }}
+
+  - repeat:
+      for_each: "{{ stale }}"
+      sequence:
+        - variables:
+            item: "{{ repeat.item }}"
+            item_tag: >
+              {{ notification_tag_prefix }}_{{ (item.entity_id | replace('sensor.', '') | replace('climate.', '') | replace('.', '_')) | regex_replace('^(.{1,18}).*$', '\\1') }}
+
+        - service: "{{ notify_service }}"
+          data:
+            title: "🔌 débranché {{ appartement }}"
+            message: >
+              {{ item.name }}
+            data:
+              tag: "{{ item_tag }}"
+              notification_icon: mdi:access-point-network-off
+              push:
+                sound:
+                  name: default
+                  critical: 1
+                  volume: 1.0
+              url: /chauffage-overview/
+              clickAction: /chauffage-overview/

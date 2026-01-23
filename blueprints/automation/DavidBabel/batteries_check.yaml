@@ -1,0 +1,174 @@
+# Version: 1.0.15
+# ✅ working
+# Appartement: Tous
+blueprint:
+  name: "🪫 Check Batteries Domotique (Multi-appartements)"
+  description: >
+    Version: 1.0.15
+    Vérifie quotidiennement les batteries domotiques et notifie si certaines
+    passent sous un seuil configurable via une entité input_number.
+  domain: automation
+  # ==============================================================================
+  # INPUTS - Configuration des paramètres du blueprint
+  # ==============================================================================
+  input:
+    # --------------------------------------------------------------------------
+    # Appartement : filtre pour les capteurs concernés
+    # Type attendu : sélection parmi les options définies
+    # Valeur attendue : emoji + nom d'appartement
+    # --------------------------------------------------------------------------
+    appartement:
+      name: 🏠 Appartement
+      description: Sélectionne l'appartement concerné
+      default: "🟧 Engel"
+      selector:
+        select:
+          options:
+            - "🟧 Engel"
+            - "🟩 Romains"
+            - "🟦 Carmes"
+
+    # --------------------------------------------------------------------------
+    # Capteurs de batteries : liste des sensors à surveiller
+    # Type attendu : sensor.xxx_battery (capteurs de niveau de batterie)
+    # Valeur attendue : pourcentage entre 0 et 100
+    # --------------------------------------------------------------------------
+    batteries:
+      name: 🔋 Capteurs de batteries
+      description: Liste des entités batterie à surveiller
+      default:
+        - sensor.chauffage_engel_chambre_salon_battery
+        - sensor.chauffage_engel_chambre_sud_battery
+        - sensor.chauffage_engel_chambre_ouest_battery
+        - sensor.chauffage_engel_chambre_nord_battery
+        - sensor.temperature_engel_salle_de_bains_battery
+        - sensor.detecteur_eau_engel_salle_de_bains_battery
+        - sensor.chauffage_engel_salon_battery
+        - sensor.temperature_engel_communs_battery
+        - sensor.detecteur_eau_engel_chauffe_eau_battery
+        - sensor.detecteur_fumee_engel_entree_battery
+        - sensor.detecteur_eau_engel_cuisine_battery
+        - sensor.bouton_engel_chambre_salon_batterie
+        - sensor.bouton_engel_chambre_sud_batterie
+        - sensor.bouton_engel_chambre_ouest_batterie
+        - sensor.bouton_engel_chambre_nord_batterie
+        - sensor.chauffage_romains_chambre_cuisine_battery
+        - sensor.chauffage_romains_chambre_cellier_battery
+        - sensor.chauffage_romains_chambre_balcon_battery
+        - sensor.chauffage_romains_chambre_grande_gauche_battery
+        - sensor.chauffage_romains_chambre_grande_droite_battery
+        - sensor.chauffage_romains_salle_de_bains_battery
+        - sensor.temperature_romains_salle_de_bains_battery
+        - sensor.temperature_romains_communs_battery
+        - sensor.detecteur_fumee_romains_cellier_battery
+        - sensor.bouton_romains_chambre_cuisine_batterie
+        - sensor.bouton_romains_chambre_cellier_batterie
+        - sensor.bouton_romains_chambre_balcon_batterie
+        - sensor.bouton_romains_chambre_grande_gauche_batterie
+        - sensor.bouton_romains_chambre_grande_droite_batterie
+      selector:
+        entity:
+          domain: sensor
+          multiple: true
+
+    # --------------------------------------------------------------------------
+    # Seuil d'alerte : valeur de référence pour déclencher la notification
+    # Type attendu : input_number.xxx (Helper > Number)
+    # Valeur attendue : pourcentage entre 0 et 100 (recommandé : 80)
+    # Créer via UI : Settings > Helpers > Create Helper > Number
+    # --------------------------------------------------------------------------
+    seuil_entite:
+      name: 🎚️ Entité seuil d’alerte
+      description: Entité input_number définissant le seuil batterie
+      default: input_number.seuil_alerte_batterie
+      selector:
+        entity:
+          domain: input_number
+
+    # --------------------------------------------------------------------------
+    # Device de notification : appareil mobile recevant les alertes
+    # Type attendu : device avec l'app mobile Home Assistant installée
+    # --------------------------------------------------------------------------
+    notifier:
+      name: 📱 Device à notifier
+      description: >
+        Le device doit utiliser l'application mobile officielle Home Assistant.
+      selector:
+        device:
+          filter:
+            integration: mobile_app
+
+# ==============================================================================
+# TRIGGER : Vérification quotidienne à heure fixe
+# ==============================================================================
+trigger:
+  - platform: time
+    at: "10:10:00"
+  - platform: time
+    at: "13:10:00"
+  - platform: time
+    at: "18:10:00"
+  - platform: time
+    at: "22:10:00"
+
+# ==============================================================================
+# MODE SINGLE : Une seule exécution à la fois
+# ==============================================================================
+mode: single
+
+# ==============================================================================
+# ACTION : Vérification et notification des batteries faibles
+# ==============================================================================
+action:
+  # --------------------------------------------------------------------------
+  # Étape 1 : Calcul de la liste des batteries faibles
+  # Filtre les batteries de l'appartement concerné qui sont sous le seuil
+  # --------------------------------------------------------------------------
+  - variables:
+      appartement_input: !input appartement
+      seuil_entite_input: !input seuil_entite
+      batteries_list: !input batteries
+      notify_device: !input notifier
+      liste_simplifiee: |-
+        {% set seuil = states(seuil_entite_input) | float(80) %}
+        {% set prefix = appartement_input.split(' ')[1] | lower %}
+        {% set ns = namespace(items=[]) %}
+        {% for entity in batteries_list %}
+          {% if prefix in entity %}
+            {% set bat = states(entity) | float(100) %}
+            {% if bat < seuil %}
+              {% set name = state_attr(entity, 'friendly_name')
+                | regex_replace('(?i)batterie|battery|engel|romains|carmes', '')
+                | regex_replace('  +', ' ')
+                | trim %}
+              {% set ns.items = ns.items + [ name ~ " (" ~ bat | int ~ "%)" ] %}
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.items | join('\n') }}
+      notify_service: >
+        notify.mobile_app_{{ device_attr(notify_device, 'name')
+          | lower
+          | replace(' ', '_')
+          | replace('-', '_') }}
+
+  # --------------------------------------------------------------------------
+  # Étape 2 : Vérification qu'il y a au moins une batterie faible
+  # Si liste vide, l'automation s'arrête ici (pas de notification)
+  # --------------------------------------------------------------------------
+  - condition: template
+    value_template: "{{ liste_simplifiee | length > 0 }}"
+
+  # --------------------------------------------------------------------------
+  # Étape 3 : Envoi de la notification avec la liste des batteries à changer
+  # --------------------------------------------------------------------------
+  - service: "{{ notify_service }}"
+    data:
+      title: "🔋 Piles à changer {{ appartement_input }}"
+      message: "{{ liste_simplifiee }}"
+      data:
+        notification_icon: mdi:battery-alert
+        icon: mdi:battery-alert
+        color: "#FFA500"
+        clickAction: /batteries-check/0
+        url: /batteries-check/0

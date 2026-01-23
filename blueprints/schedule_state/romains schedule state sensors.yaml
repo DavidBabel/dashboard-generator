@@ -1,0 +1,74 @@
+- platform: schedule_state
+  name: "Schedule Chambre Default"
+  icon: mdi:bed
+  default_state: eco
+  events:
+    - start: "07:00"
+      end: "22:00"
+      state: comfort
+      condition:
+        condition: time
+        weekday: [mon, tue, wed, thu, fri]
+    - start: "09:00"
+      end: "22:30"
+      state: comfort
+      condition:
+        condition: time
+        weekday: [sat, sun]
+
+- platform: schedule_state
+  name: "Schedule Communs / SdB"
+  icon: mdi:sofa
+  default_state: eco
+  events:
+    - start: "07:00"
+      end: "09:00"
+      state: comfort
+      condition:
+        condition: time
+        weekday: [mon, tue, wed, thu, fri]
+    - start: "18:00"
+      end: "20:00"
+      state: comfort
+      condition:
+        condition: time
+        weekday: [mon, tue, wed, thu, fri]
+    - start: "09:00"
+      end: "12:00"
+      state: comfort
+      condition:
+        condition: time
+        weekday: [sat, sun]
+    - start: "18:00"
+      end: "20:00"
+      state: comfort
+      condition:
+        condition: time
+        weekday: [sat, sun]
+
+- platform: schedule_state
+  name: "Schedule Force Comfort"
+  icon: mdi:fire
+  default_state: comfort
+  events:
+    - start: "00:00"
+      end: "23:59"
+      state: comfort
+
+- platform: schedule_state
+  name: "Schedule Force Eco"
+  icon: mdi:leaf
+  default_state: eco
+  events:
+    - start: "00:00"
+      end: "23:59"
+      state: eco
+
+- platform: schedule_state
+  name: "Schedule Force Frost"
+  icon: mdi:snowflake
+  default_state: frost
+  events:
+    - start: "00:00"
+      end: "23:59"
+      state: frost

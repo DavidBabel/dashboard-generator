@@ -1,0 +1,159 @@
+#!/usr/bin/env bash
+# Post-commit hook : garantir qu'aucun fichier n'est laissé modifié après commit.
+#
+# Objectif : remplacer le placeholder "pending" par le vrai message de commit
+# dans les blueprints, régénérer status.md/links.md, puis amender le commit.
+#
+# Pourquoi ici ? Certaines UIs (ex: VS Code) peuvent rendre la mise à jour
+# depuis commit-msg non fiable. Post-commit + amend est plus robuste.
+
+set -euo pipefail
+
+BLUEPRINTS_DIR="blueprints/automation/DavidBabel"
+STATUS_FILE="blueprints/status.md"
+LINKS_FILE="blueprints/links.md"
+BASE_URL="https://raw.githubusercontent.com/DavidBabel/ha/master/blueprints/automation/DavidBabel/"
+
+git_dir=$(git rev-parse --git-dir)
+lock_file="$git_dir/.post_commit_amend_lock"
+
+# Anti-boucle : un amend déclenche aussi post-commit
+if [ -f "$lock_file" ]; then
+	exit 0
+fi
+
+touch "$lock_file"
+trap 'rm -f "$lock_file"' EXIT
+
+commit_msg=$(git log -1 --pretty=%s | tr -d '\r' | sed 's/["`$]//g')
+if [ -z "$commit_msg" ]; then
+	exit 0
+fi
+
+changed_any=false
+
+# Parcourir les fichiers du dernier commit
+while IFS= read -r -d '' file; do
+	file=${file//$'\r'/}
+
+	# Exclure les dossiers trash
+	if [[ "$file" == *"/trash/"* ]]; then
+		continue
+	fi
+
+	if [[ $file =~ ^blueprints/automation/.+\.yaml$ ]] && [ -f "$file" ]; then
+		head_line2=$(git show "HEAD:$file" 2>/dev/null | sed -n '2p' | tr -d '\r')
+
+		# On ne corrige que les fichiers committés avec le placeholder "pending"
+		if echo "$head_line2" | grep -Eq "to test[[:space:]]*:[[:space:]]*pending"; then
+			desired="# 🧪 to test : $commit_msg"
+			work_line2=$(sed -n '2p' "$file" | tr -d '\r')
+
+			# Réécrire seulement si nécessaire (sinon on stage simplement)
+			if [ "$work_line2" != "$desired" ]; then
+				temp_file="${file}.tmp"
+				awk -v desired="$desired" '
+					NR == 2 {
+						print desired
+						next
+					}
+					{ print }
+				' "$file" > "$temp_file"
+				mv "$temp_file" "$file"
+			fi
+
+			git add "$file"
+			changed_any=true
+		fi
+	fi
+done < <(git diff-tree --no-commit-id --name-only -z -r HEAD)
+
+generate_status() {
+	echo "# Statut des Blueprints" > "$STATUS_FILE"
+	echo "" >> "$STATUS_FILE"
+	echo "_Généré automatiquement par post-commit_" >> "$STATUS_FILE"
+	echo "" >> "$STATUS_FILE"
+
+	for yaml_file in $(ls "$BLUEPRINTS_DIR"/*.yaml 2>/dev/null | sort); do
+		if [ -f "$yaml_file" ]; then
+			filename=$(basename "$yaml_file")
+			line2=$(sed -n '2p' "$yaml_file" | tr -d '\r')
+
+			if echo "$line2" | grep -q "working"; then
+				icon="✅"
+				comment=$(echo "$line2" | sed -E 's/^#[^:]*:\s*//')
+			elif echo "$line2" | grep -q "to test"; then
+				icon="🧪"
+				comment=$(echo "$line2" | sed -E 's/^#[^:]*:\s*//')
+			else
+				icon="❓"
+				comment=""
+			fi
+
+			if [ -n "$comment" ]; then
+				echo "$icon \`$filename\` : $comment" >> "$STATUS_FILE"
+			else
+				echo "$icon \`$filename\`" >> "$STATUS_FILE"
+			fi
+		fi
+	done
+
+	git add "$STATUS_FILE"
+}
+
+generate_links() {
+	> "$LINKS_FILE"
+	declare -A categories
+
+	for yaml_file in "$BLUEPRINTS_DIR"/*.yaml; do
+		if [ -f "$yaml_file" ]; then
+			filename=$(basename "$yaml_file")
+			line3=$(sed -n '3p' "$yaml_file" | tr -d '\r')
+			if [[ "$line3" == \#\ Appartement:* ]]; then
+				category=${line3#\# Appartement:}
+				# trim leading spaces
+				category=${category#${category%%[![:space:]]*}}
+			else
+				category=""
+			fi
+			if [ -z "$category" ]; then
+				category="Autre"
+			fi
+
+			if [ -z "${categories[$category]+x}" ]; then
+				categories[$category]="${BASE_URL}${filename}"
+			else
+				categories[$category]="${categories[$category]}"$'\n'"${BASE_URL}${filename}"
+			fi
+		fi
+	done
+
+	while IFS= read -r category; do
+		[ -z "$category" ] && continue
+		echo "# Appartement: $category" >> "$LINKS_FILE"
+		echo "${categories[$category]}" >> "$LINKS_FILE"
+		echo "" >> "$LINKS_FILE"
+	done < <(printf '%s\n' "${!categories[@]}" | sort)
+
+	git add "$LINKS_FILE"
+}
+
+if [ "$changed_any" = true ]; then
+	generate_status
+	generate_links
+
+	# Amender pour inclure ces changements et laisser un working tree propre.
+	committer_name=$(git config user.name 2>/dev/null || true)
+	committer_email=$(git config user.email 2>/dev/null || true)
+	if [ -n "$committer_name" ] && [ -n "$committer_email" ]; then
+		GIT_COMMITTER_NAME="$committer_name" \
+		GIT_COMMITTER_EMAIL="$committer_email" \
+		git commit --amend --no-edit --no-verify >/dev/null
+	else
+		# Si l'identité n'est pas disponible, on ne bloque pas le commit.
+		# L'utilisateur verra des fichiers modifiés et pourra amender manuellement.
+		exit 0
+	fi
+fi
+
+exit 0

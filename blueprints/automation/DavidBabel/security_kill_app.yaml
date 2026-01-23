@@ -1,0 +1,47 @@
+# Version: 1.0.3
+# ✅ working
+# Appartement: Tous
+blueprint:
+  name: "🛑 Auto-stop Add-on après délai"
+  description: Arrête un add-on spécifique après un temps défini en éteignant le switch associé.
+  domain: automation
+  input:
+    running_sensor:
+      name: Capteur “add-on en cours d'exécution”
+      description: >
+        Binary sensor qui passe à on quand l'add-on tourne.
+        A activer dans l'addon qu'on veut surveiller.
+        ⚠️ Attention à également activer le switch de l'app
+        Exemple : binary_sensor.advanced_ssh_web_terminal_en_cours_d_execution
+      default: binary_sensor.advanced_ssh_web_terminal_en_cours_d_execution
+      selector:
+        entity:
+          domain: binary_sensor
+    running_duration:
+      name: Durée de fonctionnement
+      description: Temps (en minutes) avant d'arrêter l'add-on
+      default: 30
+      selector:
+        number:
+          min: 1
+          max: 120
+          unit_of_measurement: minutes
+
+variables:
+  running_sensor: !input running_sensor
+  app_switch: >
+    {% set raw = running_sensor.split('.')[1] if '.' in running_sensor else running_sensor %}
+    {% set raw = raw | regex_replace('_en_cours_d_execution$', '') %}
+    {{ 'switch.' ~ raw }}
+
+trigger:
+  - platform: state
+    entity_id: !input running_sensor
+    to: "on"
+    for:
+      minutes: !input running_duration
+
+action:
+  - service: switch.turn_off
+    target:
+      entity_id: "{{ app_switch }}"

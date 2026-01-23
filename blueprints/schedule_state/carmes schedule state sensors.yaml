@@ -1,0 +1,132 @@
+# --------------------------
+# CHAMBRE
+# Semaine : comfort 19h → 8h
+# Weekend : comfort 19h → 10h
+# --------------------------
+- platform: schedule_state
+  name: "Chambre Mode"
+  icon: mdi:bed
+  default_state: eco
+  events:
+    # Mercredi full comfort
+    - start: "00:00"
+      end: "23:59"
+      state: comfort
+      condition:
+        condition: time
+        weekday: [wed]
+    # Semaine autres jours
+    - start: "19:00"
+      end: "23:59"
+      state: comfort
+      condition:
+        condition: time
+        weekday: [mon, tue, thu, fri]
+    - start: "00:00"
+      end: "08:00"
+      state: comfort
+      condition:
+        condition: time
+        weekday: [mon, tue, thu, fri]
+    # Weekend
+    - start: "19:00"
+      end: "23:59"
+      state: comfort
+      condition:
+        condition: time
+        weekday: [sat, sun]
+    - start: "00:00"
+      end: "10:00"
+      state: comfort
+      condition:
+        condition: time
+        weekday: [sat, sun]
+
+# --------------------------
+# BUREAU
+# Semaine : boost 8h→9h, comfort 9h→19h, eco autre
+# --------------------------
+- platform: schedule_state
+  name: "Bureau Mode"
+  icon: mdi:desktop-classic
+  default_state: eco
+  events:
+    - start: "08:00"
+      end: "09:00"
+      state: boost
+      condition:
+        condition: time
+        weekday: [mon, tue, wed, thu, fri]
+    - start: "09:00"
+      end: "19:00"
+      state: comfort
+      condition:
+        condition: time
+        weekday: [mon, tue, wed, thu, fri]
+
+# --------------------------
+# CUISINE
+# Semaine : comfort 7h→8h + 17:30→19:30
+# Weekend : comfort 10h→10h30 + 12:30→13:30
+# --------------------------
+- platform: schedule_state
+  name: "Cuisine Mode"
+  icon: mdi:food-variant
+  default_state: eco
+  events:
+    # Semaine
+    - start: "07:00"
+      end: "08:00"
+      state: comfort
+      condition:
+        condition: time
+        weekday: [mon, tue, wed, thu, fri]
+    - start: "17:30"
+      end: "19:30"
+      state: comfort
+      condition:
+        condition: time
+        weekday: [mon, tue, wed, thu, fri]
+    # Mercredi midi
+    - start: "11:30"
+      end: "12:30"
+      state: comfort
+      condition:
+        condition: time
+        weekday: [wed]
+    # Weekend
+    - start: "10:00"
+      end: "10:30"
+      state: comfort
+      condition:
+        condition: time
+        weekday: [sat, sun]
+    - start: "12:30"
+      end: "13:30"
+      state: comfort
+      condition:
+        condition: time
+        weekday: [sat, sun]
+
+# --------------------------
+# SALON
+# Semaine : comfort 18h→22h
+# Weekend : comfort 10h→22h
+# --------------------------
+- platform: schedule_state
+  name: "Salon Mode"
+  icon: mdi:sofa
+  default_state: eco
+  events:
+    - start: "18:00"
+      end: "22:00"
+      state: comfort
+      condition:
+        condition: time
+        weekday: [mon, tue, wed, thu, fri]
+    - start: "10:00"
+      end: "22:00"
+      state: comfort
+      condition:
+        condition: time
+        weekday: [sat, sun]

@@ -1,0 +1,110 @@
+title: "Outils"
+views:
+  - title: "Configs"
+    path: configs
+    icon: mdi:cog
+    type: sections
+    sections:
+      - type: grid
+        cards:
+          - type: button
+            show_name: true
+            show_icon: true
+            icon: mdi:web
+            icon_height: 140px
+            name:
+              - type: text
+                text: "🛡️"
+              - type: text
+                text: Proxy
+            tap_action:
+              action: url
+              url_path: "https://romains-proxy.oopinou.top/"
+            grid_options:
+              columns: 8
+              rows: 4
+
+          - type: button
+            show_name: true
+            show_icon: true
+            icon: mdi:zigbee
+            icon_height: 140px
+            name:
+              - type: text
+                text: "📶"
+              - type: text
+                text: Zigbee2MQTT
+            tap_action:
+              action: navigate
+              navigation_path: "/45df7312_zigbee2mqtt/ingress"
+            grid_options:
+              columns: 8
+              rows: 4
+
+          - type: button
+            show_name: true
+            show_icon: true
+            icon: mdi:store
+            icon_height: 140px
+            name:
+              - type: text
+                text: "🧩"
+              - type: text
+                text: HACS
+            tap_action:
+              action: navigate
+              navigation_path: "/hacs/dashboard"
+            grid_options:
+              columns: 8
+              rows: 4
+
+          - type: button
+            show_name: true
+            show_icon: true
+            icon: mdi:file-cog
+            icon_height: 140px
+            name:
+              - type: text
+                text: "⚙️"
+              - type: text
+                text: Configurator
+            tap_action:
+              action: navigate
+              navigation_path: "/core_configurator/ingress"
+            grid_options:
+              columns: 8
+              rows: 4
+
+          - type: button
+            show_name: true
+            show_icon: true
+            icon: mdi:view-dashboard-edit
+            icon_height: 140px
+            name:
+              - type: text
+                text: "🧱"
+              - type: text
+                text: Dashboard Generator
+            tap_action:
+              action: navigate
+              navigation_path: "/dashboard-generator/0"
+            grid_options:
+              columns: 8
+              rows: 4
+
+          - type: button
+            show_name: true
+            show_icon: true
+            icon: mdi:console
+            icon_height: 140px
+            name:
+              - type: text
+                text: "🖥️"
+              - type: text
+                text: SSH
+            tap_action:
+              action: navigate
+              navigation_path: "/a0d7b954_ssh/ingress"
+            grid_options:
+              columns: 8
+              rows: 4

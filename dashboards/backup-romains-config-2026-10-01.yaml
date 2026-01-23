@@ -1,0 +1,268 @@
+views:
+  - title: Détecteurs de présence
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            icon: mdi:lightbulb-on-10
+            heading: Switch lumières & Compteur
+            heading_style: subtitle
+          - show_name: true
+            show_icon: true
+            type: button
+            entity: light.telerupteur_romains_lumieres_cuisine
+            name: Intérupteur Cuisine
+            show_state: true
+            grid_options:
+              columns: 12
+              rows: 3
+          - show_name: true
+            show_icon: true
+            type: button
+            entity: light.telerupteur_romains_lumieres_salon
+            name: Intérupteur Salon
+            show_state: true
+            grid_options:
+              columns: 12
+              rows: 3
+          - type: heading
+            icon: mdi:robot
+            heading: Activation automations
+            heading_style: subtitle
+          - type: tile
+            grid_options:
+              rows: 2
+              columns: 15
+            entity: automation.extinction_auto_lumieres_presence_temporisee
+            name:
+              type: entity
+            icon: mdi:home-lightning-bolt-outline
+            color: orange
+            vertical: true
+            tap_action:
+              action: toggle
+            features_position: bottom
+          - type: tile
+            grid_options:
+              columns: 9
+              rows: 2
+            entity: counter.salon_lights_auto_off_count
+            name:
+              - type: text
+                text: 💡
+              - type: text
+                text: Count off auto
+            vertical: true
+            features_position: bottom
+          - type: tile
+            grid_options:
+              rows: 2
+              columns: 15
+            entity: automation.extinction_auto_personne_a_la_maison
+            name:
+              type: entity
+            icon: mdi:home-lightning-bolt-outline
+            color: orange
+            vertical: true
+            tap_action:
+              action: toggle
+            features_position: bottom
+          - type: tile
+            grid_options:
+              columns: 9
+              rows: 2
+            entity: counter.salon_lights_auto_off_count_nobody_here
+            name:
+              - type: text
+                text: 💡
+              - type: text
+                text: Count off auto Nobody
+            vertical: true
+            features_position: bottom
+          - type: heading
+            icon: mdi:incognito
+            heading: Détection capteur masqué
+            heading_style: subtitle
+          - type: tile
+            entity: sensor.presence_romains_detection_stats
+            name: Stats Présence
+            vertical: false
+            features_position: bottom
+            grid_options:
+              columns: 6
+              rows: 2
+          - type: tile
+            grid_options: &ref_0
+              columns: 18
+              rows: 2
+            entity: input_number.seuil_presence_minimum_romains
+            name:
+              - &ref_1
+                type: entity
+              - type: text
+                text: (%)
+            icon: mdi:camera-timer
+            color: blue
+            vertical: false
+            features: &ref_2
+              - style: slider
+                type: numeric-input
+            features_position: bottom
+        column_span: 2
+      - type: grid
+        cards:
+          - type: heading
+            heading: "Etat et Config : Capteur de mouvement"
+            heading_style: subtitle
+            icon: mdi:motion-sensor
+          - type: tile
+            grid_options:
+              columns: full
+              rows: 1
+            entity: binary_sensor.detecteur_romains_communs_presence
+            name:
+              - type: text
+                text: 🎬 Live
+              - type: device
+              - type: entity
+              - type: area
+            state_content:
+              - state
+              - last_changed
+            vertical: false
+            features_position: bottom
+          - type: tile
+            grid_options:
+              columns: 12
+              rows: 1
+            entity: button.detecteur_romains_communs_spatial_learning
+            vertical: false
+            features_position: bottom
+          - type: tile
+            grid_options:
+              columns: 12
+              rows: 1
+            entity: select.detecteur_romains_communs_motion_sensitivity
+            vertical: false
+            features_position: bottom
+          - type: tile
+            grid_options:
+              columns: 24
+              rows: 1
+            entity: number.detecteur_romains_communs_detection_range
+            name: Portée Radar
+            icon: mdi:radar
+            color: blue
+            show_entity_picture: false
+            hide_state: false
+            vertical: false
+            features:
+              - style: slider
+                type: numeric-input
+            features_position: inline
+          - type: heading
+            icon: mdi:chart-bell-curve-cumulative
+            heading: Config de lissage de présence (nécessite reload la config)
+            heading_style: subtitle
+          - type: tile
+            grid_options:
+              columns: 18
+              rows: 2
+            entity: input_number.duree_lissage_presence_on
+            name:
+              - type: entity
+              - type: text
+                text: (seconds)
+            icon: mdi:camera-timer
+            color: blue
+            vertical: false
+            features:
+              - style: slider
+                type: numeric-input
+            features_position: bottom
+          - type: button
+            tap_action:
+              action: call-service
+              service: homeassistant.reload_core_config
+            name: Reload YAML
+            icon: mdi:reload
+            show_icon: true
+            show_name: true
+            grid_options:
+              columns: 6
+              rows: 6
+          - type: tile
+            grid_options:
+              columns: 18
+              rows: 2
+            entity: input_number.duree_lissage_presence_off
+            name:
+              - type: entity
+              - type: text
+                text: (minutes)
+            icon: mdi:camera-timer
+            color: blue
+            vertical: false
+            features:
+              - style: slider
+                type: numeric-input
+            features_position: bottom
+          - type: tile
+            grid_options: *ref_0
+            entity: input_number.duree_grace_period_on_light_on
+            name:
+              - *ref_1
+              - type: text
+                text: (seconds)
+            icon: mdi:camera-timer
+            color: blue
+            vertical: false
+            features: *ref_2
+            features_position: bottom
+        column_span: 2
+      - type: grid
+        cards:
+          - type: heading
+            icon: mdi:timer-sand
+            heading: Historique états
+            heading_style: subtitle
+          - type: history-graph
+            entities:
+              - entity: switch.telerupteur_romains_lumieres_salon
+                name: 🛋️ Lumière Salon
+              - entity: switch.telerupteur_romains_lumieres_cuisine
+                name: 🍽️ Lumière cuisine
+              - entity: binary_sensor.detecteur_romains_communs_presence
+                name:
+                  - type: text
+                    text: 🔊
+                  - type: entity
+              - entity: binary_sensor.presence_communs_temporisee
+                name:
+                  - type: text
+                    text: 🕒
+                  - type: text
+                    text: Occupation temporisée
+              - entity: binary_sensor.romains_anyone_is_present
+                name: 🧍‍♂️🗝️ Quelqu'un présent
+              - entity: automation.extinction_auto_lumieres_presence_temporisee
+                name: 🤖 Automation timer
+              - entity: automation.extinction_auto_personne_a_la_maison
+                name: 🤖 Automation nobody
+              - entity: input_select.lights_automation_events
+                name: ⚡️ Automation Event
+            hours_to_show: 80
+            grid_options:
+              columns: 48
+          - type: history-graph
+            entities:
+              - entity: sensor.presence_romains_detection_stats
+            hours_to_show: 800
+            grid_options:
+              columns: 48
+            min_y_axis: 0
+            max_y_axis: 100
+        column_span: 4
+    type: sections
+    max_columns: 4
+    cards: []

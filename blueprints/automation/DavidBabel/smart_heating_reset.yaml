@@ -1,0 +1,653 @@
+# Version: 1.0.15
+# ✅ working
+# Appartement: Tous
+blueprint:
+  name: "🧠🌡️ VT Reset Automatique Optimisé & Instrumenté 🔵 PAR CHAMBRE"
+  description: >
+    Version: 1.0.15
+    Synchronise le VT avec la vanne physique, respecte les réglages manuels,
+    protège contre valeurs invalides et micro-ajustements,
+    puis force un recalcul du planning après stabilisation.
+  domain: automation
+  # résumé du workflow de l'automation :
+
+  # ---------------------------------------------------------------------------
+  # ALGORITHME ATTENDU (vue d'ensemble)
+  # Entrées :
+  #   - valve_entity : vanne physique (climate.*) ; consigne via attribut temperature
+  #   - vt_entity    : Versatile Thermostat (climate.*) ; consigne via attribut temperature
+  #   - schedule_entity : sensor schedule_state (eco/comfort/boost/frost...) pour preset final
+  #   - event_entity : input_select pour tracer l'état (run, waiting, synced, reset, idle, ...)
+  #   - timer_entity : input_number (minutes) ; durée totale avant reset planning
+  #   - hysteresis   : seuil (°C) pour éviter les micro-ajustements
+  #   - max_temperature_entity / min_temperature_entity : bornes de sécurité
+
+  #   2) Initialisation
+  #      - Lire : valve_temp_raw, vt_temp, max_temp_value, min_temp_value
+  #      - Convertir timer (minutes) → timer_seconds
+  #      - Calculer trigger_from_temp / trigger_to_temp pour détecter les auto-boucles
+
+  #   3) Anti-boucle “clamp interne”
+  #      - Si l'on observe un passage >max → ≈max (dans le trigger),
+  #        considérer que c'est induit par l'automation (clamp), logger, puis STOP.
+  #
+  # Notes pour l'algo (règles actuelles) :
+  # - Mode : `single` (un run à la fois). Un nouveau trigger pendant l'exécution est ignoré.
+  # - Après CHAQUE passage d'event (input_select), on marque une pause (10s) pour que l'événement
+  #   soit facile à traquer dans la timeline.
+  #
+  # Début du run
+  # - On log le démarrage du script à "run".
+  # - Anti-boucle clamp : si le trigger ressemble à un clamp (ex: 32 → 26), on log et on STOP
+  #   immédiatement (pas de run/idle parasite sur un auto-trigger).
+  #
+  # Quand la vanne est tournée manuellement
+  # - On ajuste la valeur du VT pour la synchroniser avec la vanne.
+  # - Le mode du VT passe en "none" (peut-être automatique).
+  # - On log l'événement à "synced".
+  # - On attend 30s pour laisser le temps à la vanne de se stabiliser.
+  #
+  # Clamp / protections
+  # - Si la valeur dépasse max_temperature_entity, on restaure la valeur à max_temperature_entity
+  #   et on continue (event "reset_max").
+  # - Si la valeur est en dessous de min_temperature_entity au début, on stoppe l'automation
+  #   après avoir synchronisé le VT (event "below_min").
+  # - Si le delta entre vanne et VT est inférieur à hysteresis, on ne fait rien
+  #   (event "aborted_small_delta" puis idle) et on stoppe.
+  #
+  # Timer + reset planning
+  # - Sinon : on log l'événement à "waiting" et on attend timer_entity minutes.
+  # - À la fin du timer :
+  #   - si la consigne est < min_temperature_entity : on NE change PAS le VT,
+  #     on passe "below_min" puis "idle" et on sort.
+  #   - si la consigne a changé pendant l'attente : on trace (event "aborted_manual")
+  #     mais on continue quand même.
+  # - Ensuite on remet le VT sur le preset du schedule_entity (event "reset").
+  # - Dans tous les cas, on termine par l'event "idle" pour autoriser un nouveau trigger.
+
+  # ==============================================================================
+  # INPUTS - Configuration des paramètres du blueprint
+  # ==============================================================================
+  input:
+    # --------------------------------------------------------------------------
+    # Vanne physique : thermostat physique Danfoss Ally ou similaire
+    # Type attendu : climate.xxx (entité thermostat physique)
+    # Valeur attendue : température cible via attribut 'temperature'
+    # --------------------------------------------------------------------------
+    valve_entity:
+      name: 🔧 Vanne Physique
+      selector:
+        entity:
+          domain: climate
+
+    # --------------------------------------------------------------------------
+    # Versatile Thermostat (VT) : thermostat virtuel à synchroniser
+    # Type attendu : climate.xxx de l'intégration versatile_thermostat
+    # Valeur attendue : température cible via attribut 'temperature'
+    # --------------------------------------------------------------------------
+    vt_entity:
+      name: 🌡️ Versatile Thermostat (VT)
+      selector:
+        entity:
+          domain: climate
+          integration: versatile_thermostat
+
+    # --------------------------------------------------------------------------
+    # Schedule : capteur schedule_state de la pièce
+    # Objectif : après le délai, remettre le VT sur le preset correspondant
+    # Type attendu : sensor.xxx (intégration schedule_state)
+    # Valeur attendue : état texte (ex: eco, comfort, boost, frost)
+    # --------------------------------------------------------------------------
+    schedule_entity:
+      name: 📅 Capteur schedule_state
+      description: >
+        Schedule de chauffage appliqué à cette pièce (utilisé au reset)
+        ⚠️ il faut modifier cette valeur dans les deux automations (reset & state)
+      default: sensor.schedule_chambre_default
+      selector:
+        entity:
+          domain: sensor
+          integration: schedule_state
+
+    # --------------------------------------------------------------------------
+    # Tracker d'événements : suivi de l'état de l'automation
+    # Type attendu : input_select.xxx (Helper > Dropdown)
+    # Valeur attendue : run, invalid_value, synced, waiting, reset, etc.
+    # Créer via UI : Settings > Helpers > Create Helper > Dropdown
+    # --------------------------------------------------------------------------
+    event_entity:
+      name: 🧾 Automation Events (input_select)
+      selector:
+        entity:
+          domain: input_select
+
+    # --------------------------------------------------------------------------
+    # Délai avant reset : durée d'attente avant recalcul du planning
+    # Type attendu : input_number.xxx (Helper > Number)
+    # Valeur attendue : durée en minutes
+    # Créer via UI : Settings > Helpers > Create Helper > Number
+    # --------------------------------------------------------------------------
+    timer_entity:
+      name: ⏲️ Délai avant reset (minutes)
+      default: input_number.timer_reset_chauffage
+      selector:
+        entity:
+          domain: input_number
+
+    # --------------------------------------------------------------------------
+    # Hystérésis minimale : différence de température minimale pour agir
+    # Type attendu : nombre décimal
+    # Valeur attendue : température en °C (recommandé : 0.4)
+    # --------------------------------------------------------------------------
+    hysteresis:
+      name: 📏 Hystérésis minimale (°C)
+      default: 0.4
+      selector:
+        number:
+          min: 0
+          max: 5
+          step: 0.1
+
+    # --------------------------------------------------------------------------
+    # Température max (sécurité) : si la vanne est poussée très haut manuellement
+    # Objectif : ramener la vanne à une consigne max dès que la consigne dépasse cette valeur
+    # (le trigger est déjà stabilisé 10s)
+    # Type attendu : input_number.xxx (Helper > Number)
+    # Valeur attendue : température en °C (ex: 26)
+    # --------------------------------------------------------------------------
+    max_temperature_entity:
+      name: 🧯 Température max (input_number)
+      description: >
+        Température max appliquée à la vanne (thermostat physique) si la consigne dépasse cette valeur.
+        Exemple typique : 26°C (valeur plafond).
+      default: input_number.max_temperature_chauffage_chambres
+      selector:
+        entity:
+          domain: input_number
+
+    # --------------------------------------------------------------------------
+    # Température min : si l'utilisateur baisse trop, on ne doit pas remonter
+    # Objectif : arrêter le script si la consigne manuelle est sous un plancher.
+    # Type attendu : input_number.xxx (Helper > Number)
+    # Valeur attendue : température en °C (ex: 15)
+    # --------------------------------------------------------------------------
+    min_temperature_entity:
+      name: 🧊 Température min (input_number)
+      description: >
+        Seuil plancher : si l'utilisateur baisse la consigne en dessous de cette valeur,
+        l'automation s'arrête et ne remonte pas le chauffage.
+      default: input_number.min_temperature_chauffage
+      selector:
+        entity:
+          domain: input_number
+
+# ==============================================================================
+# MODE SINGLE : évite qu'un auto-trigger (ex: clamp) annule le timer en cours
+# Note : pendant l'exécution, les nouveaux triggers sont ignorés.
+# ==============================================================================
+mode: single
+max_exceeded: silent
+
+# ==============================================================================
+# VARIABLES : Préparation des données (définies après trigger pour stabilité)
+# ==============================================================================
+variables:
+  valve: !input valve_entity
+  vt: !input vt_entity
+  schedule_ent: !input schedule_entity
+  events: !input event_entity
+  timer: !input timer_entity
+  hysteresis_val: !input hysteresis
+  max_temp_entity: !input max_temperature_entity
+  min_temp_entity: !input min_temperature_entity
+
+# ==============================================================================
+# TRIGGER : Changement de température sur la vanne physique
+# ==============================================================================
+trigger:
+  # --------------------------------------------------------------------------
+  # Trigger : Modification de la température cible sur la vanne
+  # Se déclenche quand : l'attribut 'temperature' change (après 10s de stabilité)
+  # Objectif : détecter un réglage manuel pour synchroniser le VT
+  # --------------------------------------------------------------------------
+  - platform: state
+    entity_id: !input valve_entity
+    attribute: temperature
+    for:
+      seconds: 10
+
+action:
+  - variables:
+      log_name: "VT Reset"
+      event_pause_seconds: 10
+      events_before: "{{ states(events) | string }}"
+      event_options: "{{ state_attr(events, 'options') or [] }}"
+      can_idle: "{{ 'idle' in event_options }}"
+      can_run: "{{ 'run' in event_options }}"
+      can_waiting: "{{ 'waiting' in event_options }}"
+      can_synced: "{{ 'synced' in event_options }}"
+      can_reset: "{{ 'reset' in event_options }}"
+      can_reset_max: "{{ 'reset_max' in event_options }}"
+      can_invalid_value: "{{ 'invalid_value' in event_options }}"
+      can_below_min: "{{ 'below_min' in event_options }}"
+      can_aborted_small_delta: "{{ 'aborted_small_delta' in event_options }}"
+      can_aborted_manual: "{{ 'aborted_manual' in event_options }}"
+      valve_temp_target: >
+        {{ (trigger.to_state.attributes.temperature | float(0))
+           if trigger.to_state is not none
+           else (state_attr(valve, 'temperature') | float(0)) }}
+      vt_temp_now: "{{ state_attr(vt, 'temperature') | float(0) }}"
+      max_temp_value: "{{ states(max_temp_entity) | float(26) }}"
+      min_temp_value: "{{ states(min_temp_entity) | float(15) }}"
+      timer_seconds: "{{ (states(timer) | float(0) * 60) | int(0) }}"
+      trigger_from_temp: "{{ (trigger.from_state.attributes.temperature | float(0)) if trigger.from_state is not none else 0 }}"
+      trigger_to_temp: "{{ (trigger.to_state.attributes.temperature | float(0)) if trigger.to_state is not none else 0 }}"
+      is_clamp_trigger: >
+        {{ trigger_from_temp > (max_temp_value + 0.1)
+           and trigger_to_temp <= (max_temp_value + 0.1) }}
+
+  # 🛑 Anti-boucle : ignore le changement induit par le clamp (ex: 32 → max)
+  # Important: placé AVANT l'event=run pour éviter le run→idle sur auto-trigger.
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ is_clamp_trigger }}"
+        sequence:
+          - service: logbook.log
+            data:
+              name: "{{ log_name }}"
+              message: "🛑 clamp interne détecté (auto-trigger) : {{ trigger_from_temp }}°C → {{ trigger_to_temp }}°C (max={{ max_temp_value }}°C)"
+
+          - stop: "Ignoré (clamp interne)"
+
+  # ▶️ RUN (toujours en premier) + pause (trace lisible)
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ can_run }}"
+        sequence:
+          - service: input_select.select_option
+            target:
+              entity_id: "{{ events }}"
+            data:
+              option: run
+
+  - service: logbook.log
+    data:
+      name: "{{ log_name }}"
+      message: >
+        "run : vanne={{ valve_temp_target }}°C, VT={{ vt_temp_now }}°C (prev_event={{ events_before }}) ({{ valve }})"
+
+  - delay:
+      seconds: "{{ event_pause_seconds }}"
+
+  # ❌ Valeur invalide
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ valve_temp_target | float(0) == 0 }}"
+        sequence:
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ can_invalid_value }}"
+                sequence:
+                  - service: input_select.select_option
+                    target:
+                      entity_id: "{{ events }}"
+                    data:
+                      option: invalid_value
+                  - delay:
+                      seconds: "{{ event_pause_seconds }}"
+
+          - service: logbook.log
+            data:
+              name: "{{ log_name }}"
+              message: "❌ invalid_value : température vanne=0°C → arrêt"
+
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ can_idle }}"
+                sequence:
+                  - service: input_select.select_option
+                    target:
+                      entity_id: "{{ events }}"
+                    data:
+                      option: idle
+                  - delay:
+                      seconds: "{{ event_pause_seconds }}"
+
+          - stop: "Température vanne invalide"
+
+  # 🧊 Sous plancher min : on n'augmente pas le chauffage
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ valve_temp_target < min_temp_value }}"
+        sequence:
+          - service: climate.set_temperature
+            target:
+              entity_id: "{{ vt }}"
+            data:
+              temperature: "{{ valve_temp_target }}"
+
+          - service: homeassistant.update_entity
+            target:
+              entity_id: "{{ vt }}"
+
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ can_below_min }}"
+                sequence:
+                  - service: input_select.select_option
+                    target:
+                      entity_id: "{{ events }}"
+                    data:
+                      option: below_min
+                  - delay:
+                      seconds: "{{ event_pause_seconds }}"
+
+          - service: logbook.log
+            data:
+              name: "{{ log_name }}"
+              message: "🧊 below_min : vanne={{ valve_temp_target }}°C < min={{ min_temp_value }}°C → VT synchronisé puis arrêt"
+
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ can_idle }}"
+                sequence:
+                  - service: input_select.select_option
+                    target:
+                      entity_id: "{{ events }}"
+                    data:
+                      option: idle
+                  - delay:
+                      seconds: "{{ event_pause_seconds }}"
+
+          - stop: "Consigne sous min"
+
+  # 📏 Hystérésis : si delta faible, on ne fait rien
+  - variables:
+      delta_now: "{{ (valve_temp_target - vt_temp_now) | abs }}"
+
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ delta_now <= (hysteresis_val | float(0.4)) }}"
+        sequence:
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ can_aborted_small_delta }}"
+                sequence:
+                  - service: input_select.select_option
+                    target:
+                      entity_id: "{{ events }}"
+                    data:
+                      option: aborted_small_delta
+                  - delay:
+                      seconds: "{{ event_pause_seconds }}"
+
+          - service: logbook.log
+            data:
+              name: "{{ log_name }}"
+              message: "ℹ️ aborted_small_delta : delta={{ delta_now }}°C ≤ hyst={{ hysteresis_val }}°C → idle"
+
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ can_idle }}"
+                sequence:
+                  - service: input_select.select_option
+                    target:
+                      entity_id: "{{ events }}"
+                    data:
+                      option: idle
+                  - delay:
+                      seconds: "{{ event_pause_seconds }}"
+
+          - stop: "Delta faible"
+
+  # 🔄 Synchronisation immédiate du VT sur la consigne manuelle
+  - service: climate.set_temperature
+    target:
+      entity_id: "{{ vt }}"
+    data:
+      temperature: "{{ valve_temp_target }}"
+
+  - service: homeassistant.update_entity
+    target:
+      entity_id: "{{ vt }}"
+
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ can_synced }}"
+        sequence:
+          - service: input_select.select_option
+            target:
+              entity_id: "{{ events }}"
+            data:
+              option: synced
+          - delay:
+              seconds: "{{ event_pause_seconds }}"
+
+  - service: logbook.log
+    data:
+      name: "{{ log_name }}"
+      message: "synced : VT={{ valve_temp_target }}°C (attente stabilisation 30s)"
+
+  # ⏱️ Attente de stabilisation vanne
+  - delay:
+      seconds: 30
+
+  - variables:
+      valve_temp_after_30: "{{ state_attr(valve, 'temperature') | float(0) }}"
+      max_clamped: "{{ valve_temp_after_30 > (max_temp_value + 0.1) }}"
+
+  # 🧯 Clamp max si besoin (et réaligne aussi le VT sur max pour rester cohérent)
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ max_clamped }}"
+        sequence:
+          - service: climate.set_temperature
+            target:
+              entity_id: "{{ valve }}"
+            data:
+              temperature: "{{ max_temp_value }}"
+
+          - service: climate.set_temperature
+            target:
+              entity_id: "{{ vt }}"
+            data:
+              temperature: "{{ max_temp_value }}"
+
+          - service: homeassistant.update_entity
+            target:
+              entity_id: "{{ vt }}"
+
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ can_reset_max }}"
+                sequence:
+                  - service: input_select.select_option
+                    target:
+                      entity_id: "{{ events }}"
+                    data:
+                      option: reset_max
+                  - delay:
+                      seconds: "{{ event_pause_seconds }}"
+
+          - service: logbook.log
+            data:
+              name: "{{ log_name }}"
+              message: "🧯 reset_max : vanne={{ valve_temp_after_30 }}°C > max={{ max_temp_value }}°C → clamp + VT réaligné"
+
+  # ⏳ Attente avant reset (timer minutes)
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ can_waiting }}"
+        sequence:
+          - service: input_select.select_option
+            target:
+              entity_id: "{{ events }}"
+            data:
+              option: waiting
+          - delay:
+              seconds: "{{ event_pause_seconds }}"
+
+  - service: logbook.log
+    data:
+      name: "{{ log_name }}"
+      message: "waiting : attente {{ timer_seconds }}s avant reset planning"
+
+  - delay:
+      seconds: "{{ [timer_seconds, 0] | max }}"
+
+  # 🧠 Vérification finale : si la consigne vanne a changé, on n'écrase pas le réglage manuel
+  - variables:
+      valve_temp_final: "{{ state_attr(valve, 'temperature') | float(0) }}"
+      expected_final: "{{ (max_temp_value if max_clamped else valve_temp_target) | float(0) }}"
+      below_min_after_timer: "{{ valve_temp_final < min_temp_value }}"
+      manual_changed: "{{ (valve_temp_final - expected_final) | abs > 0.1 }}"
+
+  # 🧊 Après timer : si la consigne est sous le min, on sort sans toucher le VT
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ below_min_after_timer }}"
+        sequence:
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ can_below_min }}"
+                sequence:
+                  - service: input_select.select_option
+                    target:
+                      entity_id: "{{ events }}"
+                    data:
+                      option: below_min
+                  - delay:
+                      seconds: "{{ event_pause_seconds }}"
+
+          - service: logbook.log
+            data:
+              name: "{{ log_name }}"
+              message: "🧊 below_min (après timer) : vanne={{ valve_temp_final }}°C < min={{ min_temp_value }}°C → on ne change pas le VT"
+
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ can_idle }}"
+                sequence:
+                  - service: input_select.select_option
+                    target:
+                      entity_id: "{{ events }}"
+                    data:
+                      option: idle
+                  - delay:
+                      seconds: "{{ event_pause_seconds }}"
+
+          - stop: "Consigne sous min (après timer)"
+
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ manual_changed }}"
+        sequence:
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ can_aborted_manual }}"
+                sequence:
+                  - service: input_select.select_option
+                    target:
+                      entity_id: "{{ events }}"
+                    data:
+                      option: aborted_manual
+                  - delay:
+                      seconds: "{{ event_pause_seconds }}"
+
+          - service: logbook.log
+            data:
+              name: "{{ log_name }}"
+              message: "⛔ aborted_manual : vanne a changé (final={{ valve_temp_final }}°C, attendu={{ expected_final }}°C)"
+
+  # 🧠 Même si la consigne a changé pendant l'attente, on continue vers le reset.
+
+  # 🔁 Reset : retour au schedule
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ max_clamped and can_reset_max }}"
+        sequence:
+          - service: input_select.select_option
+            target:
+              entity_id: "{{ events }}"
+            data:
+              option: reset_max
+          - delay:
+              seconds: "{{ event_pause_seconds }}"
+
+      - conditions:
+          - condition: template
+            value_template: "{{ can_reset }}"
+        sequence:
+          - service: input_select.select_option
+            target:
+              entity_id: "{{ events }}"
+            data:
+              option: reset
+          - delay:
+              seconds: "{{ event_pause_seconds }}"
+
+  - variables:
+      schedule_state_raw: "{{ states(schedule_ent) }}"
+      schedule_state: "{{ schedule_state_raw | string | lower }}"
+      desired_preset: "{{ schedule_state }}"
+      preset_modes: "{{ state_attr(vt, 'preset_modes') or [] }}"
+      preset_supported: "{{ desired_preset in preset_modes }}"
+
+  - service: logbook.log
+    data:
+      name: "{{ log_name }}"
+      message: "reset : preset={{ desired_preset }} (supported={{ preset_supported }})"
+
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ preset_supported }}"
+        sequence:
+          - service: climate.set_preset_mode
+            target:
+              entity_id: "{{ vt }}"
+            data:
+              preset_mode: "{{ desired_preset }}"
+
+  - service: versatile_thermostat.reload
+
+  - service: homeassistant.update_entity
+    target:
+      entity_id: "{{ vt }}"
+
+  # ✅ Fin : repasse en idle (et pause pour traçage)
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ can_idle }}"
+        sequence:
+          - service: input_select.select_option
+            target:
+              entity_id: "{{ events }}"
+            data:
+              option: idle
+          - delay:
+              seconds: "{{ event_pause_seconds }}"
+
+  - stop: "Fin reset"

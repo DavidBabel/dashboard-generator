@@ -1,0 +1,151 @@
+# Version: 1.1.5
+# ✅ working
+# Appartement: Romains
+blueprint:
+  name: "🕵️ Warning – Capteur de Présence Potentiellement Caché"
+  description: >
+    Version: 1.1.5
+    Envoie une alerte lorsqu'un capteur de présence détecte très peu d'activité
+    pendant plusieurs jours (indicateur qu'il est peut-être caché ou défaillant).
+  domain: automation
+  # ==============================================================================
+  # INPUTS - Configuration des paramètres du blueprint
+  # ==============================================================================
+  input:
+    # --------------------------------------------------------------------------
+    # Sensor de statistiques : calcule la moyenne de détection
+    # Type attendu : sensor.xxx créé via "statistics" dans configuration.yaml
+    # Valeur attendue : pourcentage entre 0 et 100
+    # --------------------------------------------------------------------------
+    presence_statistics_sensor:
+      name: 📊 Capteur de statistiques de présence
+      description: >
+        Le sensor de type "statistics" qui calcule la moyenne de détection
+        (créez-le d'abord avec la config ci-dessus)
+      default: sensor.presence_romains_detection_percent
+      selector:
+        entity:
+          domain: sensor
+
+    # --------------------------------------------------------------------------
+    # Seuil de présence : valeur de référence pour comparer le sensor
+    # Type attendu : input_number.xxx (Helper > Number)
+    # Valeur attendue : pourcentage entre 0 et 100
+    # Créer via UI : Settings > Devices & Services > Helpers > Create Helper > Number
+    # --------------------------------------------------------------------------
+    presence_threshold:
+      name: 🎚️ Seuil de présence minimum (%)
+      description: >
+        Si la moyenne de détection est inférieure à ce pourcentage pendant
+        la durée configurée, une alerte sera envoyée
+      default: input_number.seuil_presence_minimum_romains
+      selector:
+        entity:
+          domain: input_number
+
+    # --------------------------------------------------------------------------
+    # Durée avant alerte : temps d'attente avant notification
+    # --------------------------------------------------------------------------
+    check_duration:
+      name: ⏳ Durée de surveillance
+      description: >
+        Temps pendant lequel le pourcentage doit rester sous le seuil
+        avant d'envoyer l'alerte  (minimum 1 heure pour les tests)
+      default: 2
+      selector:
+        number:
+          min: 0
+          max: 10
+          step: 0.1
+          unit_of_measurement: jours
+
+    # --------------------------------------------------------------------------
+    # Device de notification : appareil mobile recevant les alertes
+    # Type attendu : device avec l'app mobile Home Assistant installée
+    # --------------------------------------------------------------------------
+    notify_device:
+      name: 📱 Device à notifier
+      description: >
+        Le device doit utiliser l'application mobile officielle Home Assistant.
+      selector:
+        device:
+          filter:
+            integration: mobile_app
+
+# ==============================================================================
+# VARIABLES : Préparation des données pour les conditions et actions
+# ==============================================================================
+variables:
+  presence_stats_sensor: !input presence_statistics_sensor
+  presence_threshold_entity: !input presence_threshold
+  notify_device: !input notify_device
+
+  # Service de notification dynamique basé sur le nom du device
+  notify_service: >
+    notify.mobile_app_{{ device_attr(notify_device, 'name')
+      | lower
+      | replace(' ', '_')
+      | replace('-', '_') }}
+
+  # Nom convivial du sensor
+  sensor_name: >
+    {{ state_attr(presence_stats_sensor, 'friendly_name') | default(presence_stats_sensor.split('.')[1] | replace('_', ' ') | title) }}
+
+# ==============================================================================
+# TRIGGERS : Vérification quotidienne à 13h et 20h
+# ==============================================================================
+trigger:
+  - platform: time
+    id: check
+    at:
+      - "13:05:00"
+      - "20:05:00"
+
+# ==============================================================================
+# ACTIONS
+# ==============================================================================
+action:
+  # Debug logs pour vérifier les variables calculées
+  - service: system_log.write
+    data:
+      message: >
+        [Nobody Detected Debug]
+        Presence Stats Sensor: {{ presence_stats_sensor }}
+        Valeur Stats Sensor: {{ states(presence_stats_sensor) }}
+        Presence Threshold Entity: {{ presence_threshold_entity }}
+        Valeur Threshold: {{ states(presence_threshold_entity) }}
+        Notify Service: {{ notify_service }}
+        Sensor Name: {{ sensor_name }}
+        Ratio: {{ states(presence_stats_sensor) | float(0) }}
+        Seuil: {{ states(presence_threshold_entity) | float(0) }}
+        Condition (ratio < seuil): {{ states(presence_stats_sensor) | float(0) < states(presence_threshold_entity) | float(0) }}
+      level: info
+
+  - choose:
+      # ----------------------------------------------------------------------
+      # CAS 1 : Détection faible → Envoi d'alerte
+      # ----------------------------------------------------------------------
+      - conditions:
+          - condition: template
+            value_template: "{{ states(presence_stats_sensor) not in ['unknown', 'unavailable', ''] }}"
+          - condition: template
+            value_template: >
+              {% set ratio = states(presence_stats_sensor) | float(0) %}
+              {% set seuil = states(presence_threshold_entity) | float(0) %}
+              {{ ratio < seuil }}
+        sequence:
+          - service: "{{ notify_service }}"
+            data:
+              title: "⚠️ {{ sensor_name }}"
+              message: >
+                Le capteur détecte très peu d'activité ({{ states(presence_stats_sensor) }}% < {{ states(presence_threshold_entity) }}%).
+                Il est peut-être caché ou défaillant.
+              data:
+                notification_icon: mdi:motion-sensor-off
+                tag: "alerte_presence_{{ presence_stats_sensor | replace('.', '_') }}"
+                url: /presence-salon/
+                clickAction: /presence-salon/
+                actions:
+                  - action: "URI"
+                    title: "Voir capteurs"
+                    uri: "/presence-salon/"

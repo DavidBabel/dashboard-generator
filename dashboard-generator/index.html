@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Generator - Home Assistant</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <div class="container">
+    <h1> 🌡️ Dashboard Chauffage Generator</h1>
+    <p class="subtitle">Générez vos dashboards Home Assistant à partir d'un template</p>
+
+    <div class="error-message" id="errorMessage"></div>
+
+    <div class="controls-section" id="templateLoadSection">
+      <div class="controls-group controls-group-centered">
+        <div class="form-group">
+          <label for="templateFile">📁 Charger le template.yaml</label>
+          <input type="file" id="templateFile" accept=".yaml,.yml" />
+        </div>
+      </div>
+      <div id="templateStatus"></div>
+    </div>
+
+    <div class="controls-section">
+      <div class="controls-group">
+        <div class="form-group">
+          <label>Appartement</label>
+          <div class="radio-group" id="apartmentGroup">
+            <div class="radio-option">
+              <input type="radio" id="apt_engel" name="apartment" value="engel">
+              <label for="apt_engel">🥨 Engel</label>
+            </div>
+            <div class="radio-option">
+              <input type="radio" id="apt_romains" name="apartment" value="romains">
+              <label for="apt_romains">🏛️ Romains</label>
+            </div>
+            <div class="radio-option">
+              <input type="radio" id="apt_carmes" name="apartment" value="carmes">
+              <label for="apt_carmes">🏠 Carmes</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Pièce</label>
+          <div class="radio-group" id="roomGroup">
+            <!-- Généré dynamiquement par JavaScript -->
+          </div>
+        </div>
+      </div>
+
+      <div class="replacements-section" id="replacementsSection">
+        <strong>Remplacements effectués :</strong>
+        <div id="replacementsList"></div>
+      </div>
+    </div>
+
+    <div class="editor-section">
+      <div class="editor-toolbar">
+        <button class="btn-primary" id="selectAllBtn" disabled>Sélectionner tout</button>
+        <button class="btn-secondary" id="copyBtn" disabled>Copier dans le presse-papiers</button>
+      </div>
+      <textarea id="outputTextarea" readonly
+        placeholder="Sélectionnez un appartement et une pièce pour générer le contenu..."></textarea>
+    </div>
+
+    <div class="copy-feedback" id="copyFeedback">
+      Copié dans le presse-papiers !
+    </div>
+  </div>
+
+  <script>
+    // Configuration des appartements et pièces
+    const apartments = {
+      engel: [
+        { name: 'Salon', code: 'salon' },
+        { name: 'Chambre Salon', code: 'chambre_salon' },
+        { name: 'Chambre Sud', code: 'chambre_sud' },
+        { name: 'Chambre Ouest', code: 'chambre_ouest' },
+        { name: 'Chambre Nord', code: 'chambre_nord' }
+      ],
+      romains: [
+        { name: 'Chambre Cuisine', code: 'chambre_cuisine' },
+        { name: 'Chambre Cellier', code: 'chambre_cellier' },
+        { name: 'Chambre Balcon', code: 'chambre_balcon' },
+        { name: 'Chambre Grande Gauche', code: 'chambre_grande_gauche' },
+        { name: 'Chambre Grande Droite', code: 'chambre_grande_droite' },
+        { name: 'Salle de bains', code: 'salle_de_bains' }
+      ],
+      carmes: [
+        { name: 'Chambre', code: 'chambre' },
+        { name: 'Salon', code: 'salon' },
+        { name: 'Bureau', code: 'bureau' },
+        { name: 'Cuisine', code: 'cuisine' },
+        { name: 'Salle de bains', code: 'salle_de_bains' }
+      ]
+    };
+
+    // Éléments DOM
+    const apartmentRadios = document.querySelectorAll('input[name="apartment"]');
+    const roomGroup = document.getElementById('roomGroup');
+    const outputTextarea = document.getElementById('outputTextarea');
+    const summarySection = document.getElementById('summarySection');
+    const replacementsSection = document.getElementById('replacementsSection');
+    const selectAllBtn = document.getElementById('selectAllBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const copyFeedback = document.getElementById('copyFeedback');
+    const errorMessage = document.getElementById('errorMessage');
+    const templateFile = document.getElementById('templateFile');
+    const templateStatus = document.getElementById('templateStatus');
+
+    let templateContent = '';
+    let currentValues = null;
+
+    // Service pour déterminer l'emoji basé sur le code et le nom de la pièce
+    function getEmojiForRoom(roomCode, roomName = '') {
+      let emoji = '🛌'; // emoji par défaut pour les chambres
+
+      // Si c'est une chambre, retourner le lit directement
+      if (roomCode.includes('chambre')) {
+        return emoji;
+      }
+
+      // Cas spéciaux sans "chambre"
+      if (roomCode === 'salon' || roomCode.includes('salon')) {
+        emoji = '🛋️';
+      } else if (roomCode === 'salle_de_bains' || roomCode.includes('salle_de_bains')) {
+        emoji = '🛁';
+      } else if (roomCode === 'bureau' || roomCode.includes('bureau')) {
+        emoji = '💼';
+      } else if (roomCode === 'cuisine' || roomCode.includes('cuisine')) {
+        emoji = '🍳';
+      }
+
+      return emoji;
+    }
+
+    // Service pour déterminer l'icône MDI basée sur le code de la pièce
+    function getIconForRoom(roomCode) {
+      if (roomCode.includes('chambre')) {
+        return 'mdi:bed';
+      } else if (roomCode === 'salon' || roomCode.includes('salon')) {
+        return 'mdi:sofa';
+      } else if (roomCode === 'salle_de_bains' || roomCode.includes('salle_de_bains')) {
+        return 'mdi:shower';
+      } else if (roomCode === 'bureau' || roomCode.includes('bureau')) {
+        return 'mdi:desk';
+      } else if (roomCode === 'cuisine' || roomCode.includes('cuisine')) {
+        return 'mdi:kitchen';
+      }
+      return 'mdi:home'; // icône par défaut
+    }
+
+    // Déterminer le schedule à utiliser dans le schedule-state-card
+    // - Si le nom de la pièce contient "chambre" => chambre_default
+    // - Sinon => communs_sdb
+    function getRoomSchedule(roomName) {
+      return (roomName || '').toLowerCase().includes('chambre')
+        ? 'chambre_default'
+        : 'communs_sdb';
+    }
+
+    // Charger le template à partir d'un fichier
+    function loadTemplateFromFile(file) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        templateContent = e.target.result;
+        templateStatus.style.display = 'block';
+        templateStatus.style.background = '#d4edda';
+        templateStatus.style.borderLeft = '4px solid #28a745';
+        templateStatus.style.color = '#155724';
+        templateStatus.textContent = '✓ Template chargé avec succès !';
+        errorMessage.style.display = 'none';
+        apartmentSelect.focus();
+      };
+      reader.onerror = function () {
+        showError('Erreur lors de la lecture du fichier');
+      };
+      reader.readAsText(file);
+    }
+
+    // Charger le template automatiquement
+    function autoLoadTemplate() {
+      // Essayer de charger depuis le serveur
+      fetch('template.yaml')
+        .then(response => {
+          if (!response.ok) throw new Error('Fichier non trouvé');
+          return response.text();
+        })
+        .then(content => {
+          templateContent = content;
+          document.getElementById('templateLoadSection').style.display = 'none';
+          errorMessage.style.display = 'none';
+        })
+        .catch(error => {
+          // Afficher le formulaire de chargement manuel en cas d'erreur
+          document.getElementById('templateLoadSection').style.display = 'block';
+          showError('Le template.yaml n\'a pas pu être chargé automatiquement. Veuillez le sélectionner manuellement.');
+        });
+    }
+
+    // Initialiser les écouteurs
+    apartmentRadios.forEach(radio => {
+      radio.addEventListener('change', onApartmentChange);
+    });
+
+    // Faire en sorte que cliquer sur le bouton entier coche la radio
+    document.querySelectorAll('.radio-option').forEach(option => {
+      option.addEventListener('click', function (e) {
+        if (e.target.tagName !== 'INPUT') {
+          const radio = this.querySelector('input[type="radio"]');
+          radio.checked = true;
+          radio.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      });
+    });
+
+    // Les écouteurs pour les pièces seront ajoutés dynamiquement
+    selectAllBtn.addEventListener('click', selectAllText);
+    copyBtn.addEventListener('click', copyToClipboard);
+    templateFile.addEventListener('change', function (e) {
+      if (e.target.files.length > 0) {
+        loadTemplateFromFile(e.target.files[0]);
+      }
+    });
+
+    // Mettre à jour les options de pièces
+    function onApartmentChange() {
+      const apartment = Array.from(apartmentRadios).find(r => r.checked)?.value || '';
+      roomGroup.innerHTML = '';
+
+      if (apartment && apartments[apartment]) {
+        // Ajouter le bouton "Toutes" en premier
+        const allRadioOption = document.createElement('div');
+        allRadioOption.className = 'radio-option';
+        allRadioOption.innerHTML = `
+          <input type="radio" id="room_all" name="room" value="all" checked>
+          <label for="room_all">🏠 Toutes</label>
+        `;
+        roomGroup.appendChild(allRadioOption);
+
+        // Ajouter l'écouteur de clic sur le bouton "Toutes"
+        allRadioOption.addEventListener('click', function (e) {
+          if (e.target.tagName !== 'INPUT') {
+            const radio = this.querySelector('input[type="radio"]');
+            radio.checked = true;
+            radio.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        });
+
+        // Ajouter l'écouteur de changement de la radio "Toutes"
+        allRadioOption.querySelector('input[type="radio"]').addEventListener('change', function (e) {
+          onRoomChange(e);
+        });
+
+        // Ajouter les pièces individuelles
+        apartments[apartment].forEach((room, index) => {
+          const radioId = `room_${room.code}`;
+          const emoji = getEmojiForRoom(room.code, room.name);
+
+          const radioOption = document.createElement('div');
+          radioOption.className = 'radio-option';
+          radioOption.innerHTML = `
+            <input type="radio" id="${radioId}" name="room" value="${room.code}">
+            <label for="${radioId}">${emoji} ${room.name}</label>
+          `;
+          roomGroup.appendChild(radioOption);
+
+          // Ajouter l'écouteur de clic sur le bouton
+          radioOption.addEventListener('click', function (e) {
+            if (e.target.tagName !== 'INPUT') {
+              const radio = this.querySelector('input[type="radio"]');
+              radio.checked = true;
+              radio.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+          });
+
+          // Ajouter l'écouteur de changement de la radio
+          const roomRadio = radioOption.querySelector('input[type="radio"]');
+          roomRadio.addEventListener('change', function (e) {
+            onRoomChange(e);
+          });
+        });
+
+        // Générer automatiquement le mega-dashboard (car "Toutes" est coché par défaut)
+        generateAllRoomsDashboard(apartment);
+      }
+
+      // Reset si pas d'appartement
+      if (!apartment) {
+        outputTextarea.value = '';
+        replacementsSection.classList.remove('active');
+        selectAllBtn.disabled = true;
+        copyBtn.disabled = true;
+      }
+    }
+
+    // Générer le mega-dashboard avec toutes les pièces en onglets
+    function generateAllRoomsDashboard(apartment) {
+      if (!apartment || !apartments[apartment]) return;
+
+      const rooms = apartments[apartment];
+      const views = [];
+
+      // Générer une view pour chaque pièce
+      rooms.forEach(room => {
+        const emoji = getEmojiForRoom(room.code, room.name);
+        let shortname = room.name;
+
+        if (shortname.startsWith('Chambre ')) {
+          shortname = shortname.substring(8);
+        }
+        shortname = shortname.replace('Grande ', 'Gr ');
+        shortname = emoji + ' ' + shortname;
+
+        // Titre de l'onglet avec emoji pour le mega-dashboard
+        const tabTitle = emoji + ' ' + room.name;
+
+        // Extraire le contenu de la view du template (sans le "views:" parent)
+        let viewContent = templateContent;
+
+        // Pour carmes, pas de préfixe d'appartement dans les entités
+        const appartPrefix = apartment === 'carmes' ? '' : apartment + '_';
+        const appartName = apartment === 'carmes' ? '' : apartment;
+
+        // Effectuer les remplacements pour cette pièce
+        const patterns = [
+          { from: '{appart}_', to: appartPrefix },  // Gérer le underscore d'abord
+          { from: '{appart}', to: appartName },     // Puis les références sans underscore
+          { from: '{room_code}', to: room.code },
+          { from: '{room_name}', to: tabTitle },  // Utiliser le titre avec emoji pour l'onglet
+          { from: '{room_shortname}', to: shortname },
+          { from: '{room_schedule}', to: getRoomSchedule(room.name) }
+        ];
+
+        patterns.forEach(pattern => {
+          const regex = new RegExp(pattern.from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+          viewContent = viewContent.replace(regex, pattern.to);
+        });
+
+        // Le template est maintenant une view unique sans "views:" parent
+        // On indente tout le contenu de 2 espaces et on ajoute "  - " devant la première ligne
+        const indentedView = viewContent
+          .split('\n')
+          .map((line, index) => index === 0 ? '  - ' + line : '    ' + line)
+          .join('\n');
+
+        views.push(indentedView);
+      });
+
+      // Construire le mega-dashboard avec "views:" au début
+      const megaDashboard = 'views:\n' + views.join('\n');
+
+      // Afficher le contenu
+      outputTextarea.value = megaDashboard;
+
+      // Mettre à jour les remplacements (afficher un résumé)
+      const list = document.getElementById('replacementsList');
+      list.innerHTML = `<div class="replacement-item">
+        <span class="replacement-after">🏠 Dashboard complet avec ${rooms.length} onglets pour ${apartment}</span>
+      </div>`;
+      replacementsSection.classList.add('active');
+
+      // Activer les boutons
+      selectAllBtn.disabled = false;
+      copyBtn.disabled = false;
+
+      // Stocker les valeurs actuelles pour la copie
+      currentValues = {
+        appart: apartment,
+        room_code: 'all',
+        room_name: `Toutes (${rooms.length} pièces)`,
+        room_shortname: '🏠 Toutes',
+        room_schedule: ''
+      };
+
+      // Copier automatiquement
+      setTimeout(async () => {
+        const success = await copyTextToClipboard(outputTextarea.value);
+        if (success) {
+          showCopyFeedback(`🏠 ${apartment} (${rooms.length} pièces)`);
+        }
+      }, 50);
+    }
+
+    // Générer le contenu quand une pièce est sélectionnée
+    function onRoomChange(event) {
+      const apartment = Array.from(apartmentRadios).find(r => r.checked)?.value || '';
+      const roomRadio = document.querySelector('input[name="room"]:checked');
+      const roomCode = roomRadio?.value || '';
+
+      if (!apartment || !roomCode) {
+        outputTextarea.value = '';
+        replacementsSection.classList.remove('active');
+        selectAllBtn.disabled = true;
+        copyBtn.disabled = true;
+        return;
+      }
+
+      // Si "Toutes" est sélectionné, générer le mega-dashboard
+      if (roomCode === 'all') {
+        generateAllRoomsDashboard(apartment);
+        return;
+      }
+
+      // Trouver la pièce sélectionnée
+      const room = apartments[apartment].find(r => r.code === roomCode);
+      if (!room) return;
+
+      // Calculer le room_shortname avec l'emoji approprié
+      let shortname = room.name;
+      const emoji = getEmojiForRoom(roomCode, room.name);
+
+      if (shortname.startsWith('Chambre ')) {
+        shortname = shortname.substring(8); // Enlever "Chambre "
+      }
+
+      // Abréger "Grande" en "Gr" pour le shortname
+      shortname = shortname.replace('Grande ', 'Gr ');
+
+      shortname = emoji + ' ' + shortname; // Ajouter l'emoji
+
+      currentValues = {
+        appart: apartment,
+        room_code: roomCode,
+        room_name: room.name,
+        room_shortname: shortname,
+        room_schedule: getRoomSchedule(room.name)
+      };
+
+      // Générer le contenu
+      generateContent();
+
+      // Copier automatiquement après génération avec le nom de la chambre
+      setTimeout(async () => {
+        const success = await copyTextToClipboard(outputTextarea.value);
+        if (success) {
+          showCopyFeedback(emoji + ' ' + room.name);
+        }
+      }, 50);
+    }
+
+    // Générer le contenu avec les remplacements
+    function generateContent() {
+      let content = templateContent;
+      const replacements = [];
+
+      // Pour carmes, pas de préfixe d'appartement dans les entités
+      const appartPrefix = currentValues.appart === 'carmes' ? '' : currentValues.appart + '_';
+      const appartName = currentValues.appart === 'carmes' ? '' : currentValues.appart;
+
+      // Effectuer les remplacements
+      const patterns = [
+        { from: '{appart}_', to: appartPrefix },  // Gérer le underscore d'abord
+        { from: '{appart}', to: appartName },     // Puis les références sans underscore
+        { from: '{room_code}', to: currentValues.room_code },
+        { from: '{room_name}', to: currentValues.room_name },
+        { from: '{room_shortname}', to: currentValues.room_shortname },
+        { from: '{room_schedule}', to: currentValues.room_schedule }
+      ];
+
+      patterns.forEach(pattern => {
+        const regex = new RegExp(pattern.from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+        content = content.replace(regex, pattern.to);
+        replacements.push(pattern);
+      });
+
+      // Le template est une view unique, on doit ajouter "views:" et indenter
+      const indentedContent = content
+        .split('\n')
+        .map((line, index) => index === 0 ? '  - ' + line : '    ' + line)
+        .join('\n');
+
+      // Afficher le contenu avec "views:" en préfixe
+      outputTextarea.value = 'views:\n' + indentedContent;
+
+      // Mettre à jour le résumé
+      updateSummary();
+
+      // Mettre à jour les remplacements
+      updateReplacements(replacements);
+
+      // Activer les boutons
+      selectAllBtn.disabled = false;
+      copyBtn.disabled = false;
+    }
+
+    // Mettre à jour le résumé
+    function updateSummary() {
+      if (!currentValues) return;
+      // Cette fonction n'est plus nécessaire puisque la section summary a été supprimée
+    }
+
+    // Afficher les remplacements
+    function updateReplacements(replacements) {
+      const list = document.getElementById('replacementsList');
+      list.innerHTML = '';
+
+      replacements.forEach(replacement => {
+        const div = document.createElement('div');
+        div.className = 'replacement-item';
+        div.innerHTML = `
+                    <span class="replacement-before">${replacement.from}</span>
+                    <span class="replacement-arrow">→</span>
+                    <span class="replacement-after">${replacement.to}</span>
+                `;
+        list.appendChild(div);
+      });
+
+      replacementsSection.classList.add('active');
+    }
+
+    // Sélectionner tout le texte
+    function selectAllText() {
+      outputTextarea.select();
+    }
+
+    // Fonction de copie avec fallback pour les iframes
+    async function copyTextToClipboard(text) {
+      // Essayer d'abord l'API Clipboard moderne
+      if (navigator.clipboard && window.isSecureContext) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch (err) {
+          // Fallback si l'API échoue (ex: iframe)
+        }
+      }
+
+      // Fallback avec execCommand pour les iframes
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        textarea.style.top = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textarea);
+
+        if (successful) {
+          return true;
+        }
+      } catch (err) {
+        // Ignorer l'erreur
+      }
+
+      // Dernier recours : sélectionner le texte dans le textarea principal
+      outputTextarea.focus();
+      outputTextarea.select();
+      try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+          return true;
+        }
+      } catch (err) {
+        // Ignorer l'erreur
+      }
+
+      return false;
+    }
+
+    // Copier dans le presse-papiers (via bouton manuel)
+    async function copyToClipboard() {
+      const success = await copyTextToClipboard(outputTextarea.value);
+      if (success) {
+        if (currentValues) {
+          const emoji = getEmojiForRoom(currentValues.room_code, currentValues.room_name);
+          showCopyFeedback(emoji + ' ' + currentValues.room_name);
+        } else {
+          showCopyFeedback();
+        }
+      } else {
+        showError('Copie impossible. Sélectionnez le texte manuellement (Ctrl+C).');
+      }
+    }
+
+    // Afficher le message de copie
+    let copyTimeout = null;
+    let hideTimeout = null;
+
+    function showCopyFeedback(roomName = '') {
+      // Reset violent du toast existant
+      if (copyTimeout) clearTimeout(copyTimeout);
+      if (hideTimeout) clearTimeout(hideTimeout);
+      copyFeedback.classList.remove('show', 'hide');
+
+      // Mettre à jour le texte avec le nom de la chambre
+      if (roomName) {
+        copyFeedback.textContent = `${roomName} copié dans le presse-papiers !`;
+      } else {
+        copyFeedback.textContent = 'Copié dans le presse-papiers !';
+      }
+
+      // Forcer un reflow pour restart l'animation
+      void copyFeedback.offsetWidth;
+
+      // Afficher le nouveau toast
+      copyFeedback.classList.add('show');
+
+      copyTimeout = setTimeout(() => {
+        copyFeedback.classList.add('hide');
+        hideTimeout = setTimeout(() => {
+          copyFeedback.classList.remove('show', 'hide');
+        }, 300);
+      }, 3000);
+    }
+
+    // Afficher les erreurs
+    function showError(message) {
+      errorMessage.textContent = message;
+      errorMessage.classList.add('show');
+      setTimeout(() => {
+        errorMessage.classList.remove('show');
+      }, 5000);
+    }
+
+    // Initialiser au chargement
+    window.addEventListener('DOMContentLoaded', function () {
+      autoLoadTemplate();
+
+      // Vérifier les paramètres URL pour présélectionner un appartement
+      const urlParams = new URLSearchParams(window.location.search);
+      const selectedFlat = urlParams.get('flat');
+
+      if (selectedFlat) {
+        const radio = document.querySelector(`input[name="apartment"][value="${selectedFlat}"]`);
+        if (radio) {
+          radio.checked = true;
+          radio.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+    });
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,196 @@
+# Version: 1.0.6
+# ✅ working
+# Appartement: Romains
+blueprint:
+  name: "💡 Extinction Auto - Personne à la Maison"
+  description: >
+    Version: 1.0.6
+    Éteint automatiquement les lumières lorsque plus personne n'est présent dans le logement.
+    Simple et efficace : détection de présence → extinction immédiate.
+  domain: automation
+  # ==============================================================================
+  # INPUTS - Configuration des paramètres du blueprint
+  # ==============================================================================
+  input:
+    # --------------------------------------------------------------------------
+    # Capteur de présence globale : détection de présence dans le logement
+    # Type attendu : binary_sensor.xxx (Helper > Template ou groupe)
+    # Valeur attendue : on = présence détectée, off = absence
+    # --------------------------------------------------------------------------
+    presence_sensor:
+      name: 🕵️ Capteur de présence globale
+      description: Capteur binaire qui indique si quelqu'un est présent dans le logement
+      default: binary_sensor.romains_anyone_is_present
+      selector:
+        entity:
+          domain: binary_sensor
+
+    # --------------------------------------------------------------------------
+    # Lumières à contrôler : interrupteurs switch
+    # Type attendu : switch.xxx (interrupteurs/télérupteurs)
+    # Valeur attendue : on = allumé, off = éteint
+    # --------------------------------------------------------------------------
+    light_switches:
+      name: 💡 Lumières à éteindre
+      description: Sélectionnez les interrupteurs de lumières à éteindre automatiquement
+      default:
+        - switch.telerupteur_romains_lumieres_cuisine
+        - switch.telerupteur_romains_lumieres_salon
+      selector:
+        entity:
+          domain: switch
+          multiple: true
+
+    # --------------------------------------------------------------------------
+    # Tracker d'événements : suivi du déroulement de l'automation
+    # Type attendu : input_select.xxx (Helper > Dropdown)
+    # Valeur attendue : Options comme run, aborted_presence, lights_off, idle
+    # Créer via UI : Settings > Helpers > Create Helper > Dropdown
+    # --------------------------------------------------------------------------
+    automation_events_tracker:
+      name: 🧾 Tracker d'événements d'automation
+      description: Input select pour suivre les événements de l'automation
+      default: input_select.lights_automation_events
+      selector:
+        entity:
+          domain: input_select
+
+    # --------------------------------------------------------------------------
+    # Délai de grâce : temps d'attente avant extinction
+    # Type attendu : input_number.xxx (Helper > Number)
+    # Valeur attendue : durée en secondes (recommandé : >= 40)
+    # Créer via UI : Settings > Helpers > Create Helper > Number
+    # --------------------------------------------------------------------------
+    grace_period_on_nobody_home:
+      name: ⏱️ Délai de grâce avant extinction
+      description: >
+        Entité input_number définissant le temps d'attente après détection d'absence avant d'éteindre les lumières.
+        Permet d'éviter une extinction immédiate si quelqu'un sort brièvement.
+        Recommandé : au moins 40 secondes. En dessous, uniquement pour les tests.
+      default: input_number.duree_grace_period_on_light_on
+      selector:
+        entity:
+          domain: input_number
+
+    # --------------------------------------------------------------------------
+    # Compteur d'extinctions : statistiques d'utilisation
+    # Type attendu : counter.xxx (Helper > Counter)
+    # Valeur attendue : nombre entier incrémental
+    # Créer via UI : Settings > Helpers > Create Helper > Counter
+    # --------------------------------------------------------------------------
+    auto_off_counter:
+      name: 🔢 Compteur d'extinctions automatiques
+      description: Entité counter qui compte le nombre de fois où l'automation a éteint les lumières
+      default: counter.salon_lights_auto_off_count_nobody_here
+      selector:
+        entity:
+          domain: counter
+
+# ==============================================================================
+# MODE SINGLE : Une seule exécution à la fois, les suivantes sont ignorées
+# ==============================================================================
+mode: single
+max_exceeded: silent
+
+# ==============================================================================
+# TRIGGER : Événement qui déclenche l'automation
+# ==============================================================================
+trigger:
+  # --------------------------------------------------------------------------
+  # Trigger : Détection d'absence
+  # Se déclenche quand : le capteur de présence passe à off
+  # Objectif : lancer le processus d'extinction des lumières
+  # --------------------------------------------------------------------------
+  - platform: state
+    entity_id: !input presence_sensor
+    to: "off"
+
+# ==============================================================================
+# CONDITION : Vérifications avant exécution
+# ==============================================================================
+condition:
+  # Vérifie qu'au moins une lumière est allumée avant d'agir
+  # (évite de lancer l'automation inutilement)
+  - condition: template
+    value_template: >
+      {% set switches = light_switches %}
+      {{ switches | select('is_state', 'on') | list | count > 0 }}
+
+# ==============================================================================
+# VARIABLES : Préparation des données pour l'action
+# ==============================================================================
+variables:
+  light_switches: !input light_switches
+  grace_period_entity: !input grace_period_on_nobody_home
+
+# ==============================================================================
+# ACTION : Séquence d'extinction des lumières
+# ==============================================================================
+action:
+  # État : démarrage
+  - service: input_select.select_option
+    target:
+      entity_id: !input automation_events_tracker
+    data:
+      option: run
+
+  # Délai de grâce après détection d'absence
+  - delay:
+      seconds: "{{ states(grace_period_entity) | int }}"
+
+  # Double vérification de la présence (sécurité)
+  - choose:
+      - conditions:
+          - condition: state
+            entity_id: !input presence_sensor
+            state: "on"
+        sequence:
+          - service: input_select.select_option
+            target:
+              entity_id: !input automation_events_tracker
+            data:
+              option: aborted_presence
+          - delay:
+              seconds: 20
+          - service: input_select.select_option
+            target:
+              entity_id: !input automation_events_tracker
+            data:
+              option: idle
+          - stop: Présence détectée – extinction annulée
+
+  # Extinction des lumières
+  - service: switch.turn_off
+    target:
+      entity_id: !input light_switches
+
+  # Incrémentation du compteur
+  - service: counter.increment
+    target:
+      entity_id: !input auto_off_counter
+
+  # État : lumières éteintes
+  - service: input_select.select_option
+    target:
+      entity_id: !input automation_events_tracker
+    data:
+      option: lights_off
+
+  # Log de l'événement
+  - service: system_log.write
+    data:
+      level: info
+      message: >
+        Extinction automatique : plus personne présent.
+        Lumières éteintes : {{ light_switches | join(', ') }}
+
+  # Attente avant retour à l'état idle
+  - delay:
+      seconds: 20
+
+  # État : terminé avec succès
+  - service: input_select.select_option
+    target:
+      entity_id: !input automation_events_tracker
+    data:
+      option: idle

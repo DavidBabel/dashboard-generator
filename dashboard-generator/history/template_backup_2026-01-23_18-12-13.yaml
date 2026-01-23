@@ -1,0 +1,390 @@
+title: "{room_name}"
+badges: []
+type: sections
+icon: ""
+cards: []
+max_columns: 4
+path: "{room_code}"
+header:
+  layout: responsive
+  badges_position: bottom
+  badges_wrap: wrap
+sections:
+  - type: grid
+    cards:
+      - type: heading
+        heading: Versatile Thermostats
+        heading_style: title
+        icon: mdi:brain
+      - type: custom:versatile-thermostat-ui-card
+        entity: climate.chauffage_vt_{appart}_{room_code}
+        name: "{room_shortname}"
+        disable_name: false
+        disable_circle: false
+        disable_window: false
+        disable_autoStartStop: false
+        disable_overpowering: false
+        disable_heat: false
+        disable_cool: false
+        disable_heat_cool: false
+        disable_auto: false
+        disable_dry: false
+        allow_lock_toggle: true
+        disable_target_icon: false
+        disable_auto_fan_infos: true
+        set_current_as_main: false
+        disable_off: false
+        disable_fan_only: true
+        disable_menu: false
+        disable_sleep: false
+        disable_safety_warning: false
+        disable_buttons: false
+        disable_power_infos: true
+      - type: tile
+        entity: automation.schedule_state_vt_preset_{room_code}
+        vertical: false
+        features_position: bottom
+        grid_options:
+          columns: full
+      - type: tile
+        entity: automation.vt_reset_automatique_optimise_instrumente_{room_code}
+        vertical: false
+        features_position: bottom
+        grid_options:
+          columns: full
+  - type: grid
+    column_span: 3
+    cards:
+      - type: heading
+        heading: Versatile Thermostats
+        heading_style: title
+        icon: mdi:home
+      - type: tile
+        grid_options:
+          columns: 12
+          rows: 1
+        entity: binary_sensor.chauffage_vt_{appart}_{room_code}_presence_state
+        name: "{room_shortname}"
+        icon: mdi:home-account
+        show_entity_picture: false
+        hide_state: false
+        state_content:
+          - state
+          - last_updated
+        vertical: false
+        features_position: bottom
+      - type: conditional
+        conditions:
+          - entity: sensor.bouton_{appart}_{room_code}_batterie
+            state_not: unavailable
+          - entity: sensor.bouton_{appart}_{room_code}_batterie
+            state_not: unknown
+        card:
+          type: tile
+          grid_options:
+            columns: 12
+            rows: 1
+          entity: sensor.bouton_{appart}_{room_code}_batterie
+          state_content:
+            - state
+            - last_updated
+          vertical: false
+          features_position: bottom
+      - type: tile
+        grid_options:
+          columns: 12
+          rows: 1
+        entity: sensor.chauffage_{appart}_{room_code}_battery
+        state_content:
+          - state
+          - last_updated
+        vertical: false
+        features_position: bottom
+      - chart_type: line
+        period: 5minute
+        type: statistics-graph
+        entities:
+          - entity: sensor.chauffage_vt_{appart}_{room_code}_ema_temperature
+            name: Temp. Lissée (EMA)
+          - entity: sensor.chauffage_vt_{appart}_{room_code}_regulated_temperature
+            name: Temp. Consigne
+          - entity: sensor.temperature_{appart}_{room_code}
+            name: Temp. Chambre
+          - sensor.strasbourg_temperature
+          - entity: sensor.temperature_{room_code}_temperature
+          - entity: sensor.chauffage_{appart}_{room_code}_pi_heating_demand
+        stat_types:
+          - mean
+        hide_legend: false
+        logarithmic_scale: false
+        grid_options:
+          columns: 36
+          rows: 4
+        days_to_show: 4
+        min_y_axis: 0
+        fit_y_data: true
+        max_y_axis: 25
+      - type: history-graph
+        entities:
+          - entity: sensor.chauffage_{appart}_{room_code}_pi_heating_demand
+        grid_options:
+          columns: full
+          rows: 3
+        hours_to_show: 96
+  - type: grid
+    cards:
+      - type: heading
+        heading: Thermostats HA
+        heading_style: title
+        icon: mdi:thermometer
+      - type: thermostat
+        entity: climate.chauffage_{appart}_{room_code}
+        show_current_as_primary: false
+        grid_options:
+          columns: 12
+          rows: 5
+      - show_current: true
+        show_forecast: true
+        type: weather-forecast
+        entity: weather.strasbourg
+        forecast_type: hourly
+        forecast_slots: 6
+        grid_options:
+          columns: 12
+          rows: 2
+  - type: grid
+    column_span: 3
+    cards:
+      - type: heading
+        heading: Timeline
+        heading_style: title
+        icon: mdi:clipboard-text-clock
+      - type: history-graph
+        entities:
+          - entity: binary_sensor.telephone_{appart}_{room_code}
+            name: Locataire 📱
+          - entity: binary_sensor.chauffage_vt_{appart}_{room_code}_presence_state
+            name: Locataire 🗝️
+          - entity: sensor.chauffage_vt_{appart}_{room_code}_mode
+            name: Mode 🌡️
+          - entity: sensor.chauffage_vt_{appart}_{room_code}_mode_detail
+            name: 🗝️ ✖️ 🌡️
+          - entity: binary_sensor.chauffage_vt_{appart}_{room_code}_window_state
+            name: Fenêtre 🪟
+          - entity: climate.chauffage_{appart}_{room_code}
+            name: "{room_shortname}"
+          - entity: sensor.strasbourg_temperature
+            name: Temperature exterieure
+          - entity: input_select.automation_vt_{appart}_{room_code}_events
+            name: 🤖 Automation
+          - entity: binary_sensor.chauffage_vt_{room_code}_etat_de_presence
+            name:
+              - type: text
+                text: Présence
+              - type: text
+                text: lissée 🚶‍♂️
+          - entity: binary_sensor.presence_{room_code}_presence
+            name:
+              - type: device
+              - type: text
+                text: 🔉
+          - entity: binary_sensor.chauffage_vt_{room_code}_etat_de_la_fenetre
+            name:
+              - type: text
+                text: Fenêtre
+              - type: text
+                text: 🪟
+          - entity: sensor.temperature_{room_code}_temperature
+        grid_options:
+          rows: 8
+          columns: full
+        logarithmic_scale: false
+        hours_to_show: 24
+        min_y_axis: 0
+        fit_y_data: true
+        max_y_axis: 25
+  - type: grid
+    cards:
+      - type: heading
+        heading: 🔽 Cette chambre utilise la centrale 🔽
+        heading_style: title
+        icon: mdi:home-thermometer-outline
+    column_span: 4
+    visibility:
+      - condition: state
+        entity: number.chauffage_vt_{appart}_{room_code}_preset_boost_temp
+        state: unknown
+      - condition: or
+        conditions:
+          - condition: state
+            entity: number.chauffage_vt_{appart}_{room_code}_preset_boost_temp
+            state: unavailable
+  - type: grid
+    column_span: 4
+    cards:
+      - type: heading
+        heading: Config 🛌 Chambre Sud
+        heading_style: title
+      - type: entity
+        entity: number.chauffage_vt_{appart}_{room_code}_preset_boost_temp
+        name:
+          type: entity
+      - type: entity
+        entity: number.chauffage_vt_{appart}_{room_code}_preset_boost_away_temp
+        name:
+          type: entity
+      - type: entity
+        entity: number.chauffage_vt_{appart}_{room_code}_preset_comfort_temp
+        name:
+          type: entity
+      - type: entity
+        entity: number.chauffage_vt_{appart}_{room_code}_preset_comfort_away_temp
+        name:
+          type: entity
+      - type: entity
+        entity: number.chauffage_vt_{appart}_{room_code}_preset_eco_temp
+        name:
+          type: entity
+      - type: entity
+        entity: number.chauffage_vt_{appart}_{room_code}_preset_eco_away_temp
+        name:
+          type: entity
+      - type: entity
+        entity: number.chauffage_vt_{appart}_{room_code}_preset_frost_temp
+        name:
+          type: entity
+      - type: entity
+        entity: number.chauffage_vt_{appart}_{room_code}_preset_frost_away_temp
+        name:
+          type: entity
+    visibility:
+      - condition: state
+        entity: number.chauffage_vt_{appart}_{room_code}_preset_boost_temp
+        state_not: unknown
+      - condition: and
+        conditions:
+          - condition: state
+            entity: number.chauffage_vt_{appart}_{room_code}_preset_boost_temp
+            state_not: unavailable
+  - type: grid
+    column_span: 4
+    cards:
+      - type: heading
+        heading: Config Centrale
+        heading_style: title
+        icon: mdi:home-thermometer-outline
+      - type: entity
+        entity: number.central_configuration_preset_boost_temp
+        name:
+          type: entity
+      - type: entity
+        entity: number.central_configuration_preset_boost_away_temp
+        name:
+          type: entity
+      - type: entity
+        entity: number.central_configuration_preset_comfort_temp
+        name:
+          type: entity
+      - type: entity
+        entity: number.central_configuration_preset_comfort_away_temp
+        name:
+          type: entity
+      - type: entity
+        entity: number.central_configuration_preset_eco_temp
+        name:
+          type: entity
+      - type: entity
+        entity: number.central_configuration_preset_eco_away_temp
+        name:
+          type: entity
+      - type: entity
+        entity: number.central_configuration_preset_frost_temp
+        name:
+          type: entity
+      - type: entity
+        entity: number.central_configuration_preset_frost_away_temp
+        name:
+          type: entity
+  - type: grid
+    column_span: 4
+    cards:
+      - type: heading
+        icon: mdi:account
+        heading: Présence Mensuelle
+        heading_style: title
+      - type: history-graph
+        entities:
+          - entity: binary_sensor.locataire_{appart}_{room_code}_present
+            name:
+              - type: text
+                text: 🔑
+              - type: area
+          - entity: binary_sensor.telephone_{appart}_{room_code}
+            name:
+              - type: text
+                text: 📱
+              - type: area
+        grid_options:
+          columns: full
+        hours_to_show: 720
+  - type: grid
+    column_span: 4
+    cards:
+      - type: heading
+        heading: Schedule
+        heading_style: title
+        icon: mdi:calendar
+      - type: custom:schedule-state-card
+        entities:
+          - entity: sensor.schedule_{room_schedule}
+            name: Schedule {room_name}
+            icon: mdi:thermometer
+
+        colors:
+          active_layer: "var(--primary-color, #2196F3)"
+          inactive_layer: "var(--secondary-text-color, #BDBDBD)"
+          combined_folded_layer: "var(--warning-color, #FF9800)"
+          combined_unfolded_layer: "var(--primary-color, #2196F3)"
+          cursor: "var(--label-badge-yellow, #FDD835)"
+        grid_options:
+          columns: full
+        show_state_in_title: true
+        visibility:
+          - condition: state
+            entity: sensor.schedule_{room_code}
+            state_not: unknown
+          - condition: and
+            conditions:
+              - condition: state
+                entity: sensor.schedule_{room_code}
+                state_not: unavailable
+      - type: custom:schedule-state-card
+        entities:
+          - entity: sensor.schedule_{room_schedule}
+            name: Schedule {room_name}
+            icon: mdi:thermometer
+
+        colors:
+          active_layer: "var(--primary-color, #2196F3)"
+          inactive_layer: "var(--secondary-text-color, #BDBDBD)"
+          combined_folded_layer: "var(--warning-color, #FF9800)"
+          combined_unfolded_layer: "var(--primary-color, #2196F3)"
+          cursor: "var(--label-badge-yellow, #FDD835)"
+        grid_options:
+          columns: full
+        show_state_in_title: true
+      - type: history-graph
+        entities:
+          - entity: binary_sensor.chauffage_vt_{appart}_{room_code}_presence_state
+            name: 🚶‍♂️
+          - entity: sensor.chauffage_vt_{appart}_{room_code}_mode
+            name: 🌡️
+          - entity: sensor.chauffage_vt_{appart}_{room_code}_mode_detail
+            name: ✖️
+        logarithmic_scale: false
+        hours_to_show: 120
+        min_y_axis: 0
+        fit_y_data: true
+        max_y_axis: 25
+        grid_options:
+          columns: full

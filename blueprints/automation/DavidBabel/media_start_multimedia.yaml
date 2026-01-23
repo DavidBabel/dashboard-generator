@@ -1,0 +1,334 @@
+# Version: 1.1.4
+# ✅ working
+# Appartement: Carmes
+blueprint:
+  name: "🎬 Contrôle Cinéma Epson & Shield"
+  description: >
+    Version: 1.1.4
+    📽️ Allume le projecteur Epson et l’ampli Denon via la Shield ou un bouton Hue,
+    et les éteint (double OFF Epson).
+
+    Inclut la commande d’un écran de projection (cover) Broadlink (open/close + stop).
+
+    Conçu pour fonctionner avec les entités `template switch` auto-générées par Broadlink Manager
+    (celles qui font déjà `remote.send_command` avec `command: b64:...`).
+  domain: automation
+  input:
+    shield_player:
+      name: "📺 NVIDIA Shield"
+      description: "L'entité Media Player de votre Shield."
+      default: media_player.nvidia_shield
+      selector:
+        entity:
+          filter:
+            domain: media_player
+    epson_switch:
+      name: "📽️ Projecteur Epson (switch Broadlink Manager)"
+      description: "Ex: switch.broadlink_epson_eh_tw7100"
+      default: switch.broadlink_epson_eh_tw7100
+      selector:
+        entity:
+          filter:
+            domain: switch
+    denon_switch:
+      name: "🔊 Ampli Denon (switch Broadlink Manager)"
+      description: "Ex: switch.broadlink_denon_avr_x2800h"
+      default: switch.broadlink_denon_avr_x2800h
+      selector:
+        entity:
+          filter:
+            domain: switch
+    projector_screen_cover:
+      name: "🪟 Écran de projection (cover Broadlink Manager)"
+      description: "Ex: cover.broadlink_celexon_projector"
+      default: cover.broadlink_celexon_projector
+      selector:
+        entity:
+          filter:
+            domain: cover
+    hue_sync_box_devices:
+      name: "🎛️ Hue Sync Box (device)"
+      description: >
+        Sélectionne une ou plusieurs Philips Hue Play HDMI Sync Box.
+        Les entités seront détectées automatiquement depuis le device (select.* + switch.*)
+        en cherchant "espace_de_divertissement" et "synchronisation_des_lumieres".
+      default: a50bbd2d66561ff71c8b00d205dce5cb
+      selector:
+        device:
+          integration: huesyncbox
+    hue_sync_box_entertainment_option:
+      name: "🎚️ Hue Sync Box : option espace de divertissement"
+      description: >
+        Nom EXACT de l'option à sélectionner dans le select "espace_de_divertissement"
+        (ex: "Vidéo Projecteur"). Laisse vide pour ne pas modifier.
+      default: "Vidéo Projecteur"
+      selector:
+        text:
+    hue_remote_device:
+      name: "🔘 Bouton Philips Hue"
+      description: "Le device du bouton Hue (déclenchement court sur ON)."
+      default: 2d36d0122f150f4c3fc80db0f293d4c0
+      selector:
+        device:
+          integration: hue
+    lights_on_target:
+      name: "💡 Lumière(s) à allumer (appui long)"
+      description: "Lumière(s) Hue à allumer quand tu fais un appui long."
+      default: light.salon
+      selector:
+        entity:
+          filter:
+            integration: hue
+    broadlink_lights_off_on_start:
+      name: "💡 Lampes Broadlink à éteindre au démarrage"
+      description: >
+        Liste de lampes (template lights Broadlink Manager) à forcer sur OFF au démarrage.
+        Sélectionne ici tes `light.broadlink_lights_command_*` (et non les `input_boolean.*`).
+      default:
+        - light.broadlink_lights_command_salon_b
+        - light.broadlink_lights_command_salon_c
+      selector:
+        entity:
+          multiple: true
+          filter:
+            domain: light
+
+mode: restart
+
+variables:
+  sync_box_devices: !input hue_sync_box_devices
+  entertainment_option: !input hue_sync_box_entertainment_option
+  sync_box_entities: >-
+    {% set ns = namespace(out=[]) %}
+    {% if sync_box_devices is string and sync_box_devices | length > 0 %}
+      {% set ns.out = device_entities(sync_box_devices) %}
+    {% elif sync_box_devices is iterable %}
+      {% for d in sync_box_devices %}
+        {% if d is string and d | length > 0 %}
+          {% set ns.out = ns.out + device_entities(d) %}
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+    {{ ns.out }}
+  hue_sync_box_entertainment_select_entities: >-
+    {{
+      sync_box_entities
+        | select('match', '^select\\.')
+        | select('search', 'espace_de_divertissement')
+        | list
+    }}
+  hue_sync_box_light_sync_switch_entities: >-
+    {{
+      sync_box_entities
+        | select('match', '^switch\\.')
+        | select('search', 'synchronisation_des_lumieres')
+        | list
+    }}
+
+trigger:
+  # Shield
+  # Trigger Shield ON
+  - platform: state
+    entity_id: !input shield_player
+    from: ["off", "standby"]
+    to: "on"
+    id: "allumage"
+  # Trigger Shield OFF
+  - platform: state
+    entity_id: !input shield_player
+    from: "on"
+    to: ["off", "standby"]
+    id: "extinction"
+
+  # Smart Button
+  # Trigger Bouton Hue (clic court) -> toggle smart basé sur l'état de la Shield
+  - platform: device
+    device_id: !input hue_remote_device
+    domain: hue
+    type: short_release
+    subtype: 1
+    id: "smart_toggle"
+  - platform: device
+    device_id: !input hue_remote_device
+    domain: hue
+    type: short_release
+    subtype: 0
+    id: "smart_toggle"
+  # Trigger Bouton Hue (appui long) -> toggle lumières
+  - platform: device
+    device_id: !input hue_remote_device
+    domain: hue
+    type: long_press
+    subtype: 1
+    id: "lights_on"
+  - platform: device
+    device_id: !input hue_remote_device
+    domain: hue
+    type: long_press
+    subtype: 0
+    id: "lights_on"
+
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: "lights_on"
+        sequence:
+          - action: light.toggle
+            target:
+              entity_id: !input lights_on_target
+      - conditions:
+          - condition: trigger
+            id: "smart_toggle"
+        sequence:
+          # Le bip de la télécommande ne marche pas pour l'instant
+          # - action: androidtv.adb_command
+          #   data:
+          #     command: >-
+          #       am start -a android.intent.action.VIEW -d -n
+          #       com.nvidia.remotelocator/.ShieldRemoteLocatorActivity
+          #   target:
+          #     entity_id: !input shield_player
+          #   continue_on_error: true
+          - choose:
+              - conditions:
+                  - condition: state
+                    entity_id: !input shield_player
+                    state: "on"
+                sequence:
+                  - action: media_player.turn_off
+                    target:
+                      entity_id: !input shield_player
+            default:
+              - action: media_player.turn_on
+                target:
+                  entity_id: !input shield_player
+      - conditions:
+          - condition: trigger
+            id: "allumage"
+        sequence:
+          - parallel:
+              - sequence:
+                  - action: cover.open_cover
+                    target:
+                      entity_id: !input projector_screen_cover
+                  - delay:
+                      seconds: 33
+                  - action: cover.stop_cover
+                    target:
+                      entity_id: !input projector_screen_cover
+              - sequence:
+                  - action: light.turn_off
+                    target:
+                      entity_id: !input broadlink_lights_off_on_start
+                  - action: light.turn_on
+                    target:
+                      entity_id: !input lights_on_target
+                  - action: switch.turn_on
+                    target:
+                      entity_id: !input epson_switch
+                  - action: switch.turn_on
+                    target:
+                      entity_id: !input denon_switch
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ hue_sync_box_entertainment_select_entities | length > 0 and (entertainment_option | string | length > 0) }}"
+                sequence:
+                  - delay: "00:00:13"
+                  - repeat:
+                      for_each: "{{ hue_sync_box_entertainment_select_entities }}"
+                      sequence:
+                        - variables:
+                            select_entity: "{{ repeat.item }}"
+                        - wait_template: "{{ (state_attr(select_entity, 'options') or []) | length > 0 }}"
+                          timeout: "00:00:20"
+                          continue_on_timeout: true
+                        - variables:
+                            available_options: "{{ state_attr(select_entity, 'options') or [] }}"
+                            desired_option: "{{ entertainment_option }}"
+                            option_to_set: >-
+                              {% set candidates = [desired_option, 'Video Projecteur', 'Vidéo projecteur', 'Video projecteur'] %}
+                              {% set ns = namespace(match='') %}
+                              {% for c in candidates %}
+                                {% if c in available_options %}
+                                  {% set ns.match = c %}
+                                  {% break %}
+                                {% endif %}
+                              {% endfor %}
+                              {% if ns.match == '' %}
+                                {% for o in available_options %}
+                                  {% if 'projecteur' in (o | lower) %}
+                                    {% set ns.match = o %}
+                                    {% break %}
+                                  {% endif %}
+                                {% endfor %}
+                              {% endif %}
+                              {{ ns.match }}
+                        - choose:
+                            - conditions:
+                                - condition: template
+                                  value_template: "{{ option_to_set | length > 0 }}"
+                              sequence:
+                                - action: select.select_option
+                                  target:
+                                    entity_id: "{{ select_entity }}"
+                                  data:
+                                    option: "{{ option_to_set }}"
+                                  continue_on_error: true
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ hue_sync_box_light_sync_switch_entities | length > 0 }}"
+                sequence:
+                  - repeat:
+                      for_each: "{{ hue_sync_box_light_sync_switch_entities }}"
+                      sequence:
+                        - action: switch.turn_on
+                          target:
+                            entity_id: "{{ repeat.item }}"
+                          continue_on_error: true
+
+      - conditions:
+          - condition: trigger
+            id: "extinction"
+        sequence:
+          # Séquence spécifique Epson
+          - parallel:
+              - sequence:
+                  - action: cover.close_cover
+                    target:
+                      entity_id: !input projector_screen_cover
+                  - delay:
+                      seconds: 33
+                  - action: cover.stop_cover
+                    target:
+                      entity_id: !input projector_screen_cover
+              - sequence:
+                  - action: switch.turn_off
+                    target:
+                      entity_id: !input denon_switch
+                  - delay: "00:00:07"
+                  - action: switch.turn_off
+                    target:
+                      entity_id: !input epson_switch
+                  - delay: "00:00:01"
+                  - action: switch.turn_off
+                    target:
+                      entity_id: !input epson_switch
+                  - delay: "00:00:01"
+                  - action: switch.turn_off
+                    target:
+                      entity_id: !input epson_switch
+                  - delay: "00:00:01"
+                  - action: switch.turn_off
+                    target:
+                      entity_id: !input epson_switch
+                  - delay: "00:00:01"
+                  - action: switch.turn_off
+                    target:
+                      entity_id: !input epson_switch
+                  - delay: "00:00:01"
+                  - action: switch.turn_off
+                    target:
+                      entity_id: !input epson_switch

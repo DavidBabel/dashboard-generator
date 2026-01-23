@@ -1,0 +1,114 @@
+# Version: 1.0.6
+# ✅ working
+# Appartement: Tous
+blueprint:
+  name: "🔄 Notification Redémarrage Home Assistant"
+  description: >
+    Version: 1.0.6
+    Envoie une notification lorsque Home Assistant redémarre.
+    Utile pour surveiller les redémarrages automatiques ou manuels.
+  domain: automation
+  # ==============================================================================
+  # INPUTS - Configuration des paramètres du blueprint
+  # ==============================================================================
+  input:
+    # --------------------------------------------------------------------------
+    # Appartement : identification du site concerné
+    # Type attendu : sélection parmi les options définies
+    # Valeur attendue : emoji + nom d'appartement
+    # --------------------------------------------------------------------------
+    appartement:
+      name: 🏠 Appartement
+      description: Sélectionnez l'appartement concerné
+      default: "🟧 Engel"
+      selector:
+        select:
+          options:
+            - "🟧 Engel"
+            - "🟩 Romains"
+            - "🟦 Carmes"
+
+    # --------------------------------------------------------------------------
+    # Device de notification : appareil mobile recevant les alertes
+    # Type attendu : device avec l'app mobile Home Assistant installée
+    # --------------------------------------------------------------------------
+    notify_device:
+      name: 📱 Device à notifier
+      description: >
+        Le device doit utiliser l'application mobile officielle Home Assistant.
+      selector:
+        device:
+          filter:
+            integration: mobile_app
+
+    # --------------------------------------------------------------------------
+    # Délai avant notification : temps d'attente après le démarrage
+    # Type attendu : nombre entier
+    # Valeur attendue : durée en secondes (recommandé : 30)
+    # --------------------------------------------------------------------------
+    notification_delay:
+      name: ⏱️ Délai avant notification
+      description: Temps d'attente après le démarrage avant d'envoyer la notification (pour que tous les services soient prêts)
+      default: 30
+      selector:
+        number:
+          min: 5
+          max: 120
+          unit_of_measurement: secondes
+
+# ==============================================================================
+# MODE SINGLE : Une seule exécution à la fois
+# ==============================================================================
+mode: single
+max_exceeded: silent
+
+# ==============================================================================
+# VARIABLES : Préparation des données pour les notifications
+# ==============================================================================
+variables:
+  appartement: !input appartement
+  notify_device: !input notify_device
+  notify_service: >
+    notify.mobile_app_{{ device_attr(notify_device, 'name')
+      | lower
+      | replace(' ', '_')
+      | replace('-', '_') }}
+  notification_delay: !input notification_delay
+
+# ==============================================================================
+# TRIGGER : Démarrage de Home Assistant
+# ==============================================================================
+trigger:
+  # --------------------------------------------------------------------------
+  # Trigger : Démarrage de Home Assistant
+  # Se déclenche quand : Home Assistant démarre ou redémarre
+  # Objectif : notifier l'utilisateur du redémarrage
+  # --------------------------------------------------------------------------
+  - platform: homeassistant
+    event: start
+
+# ==============================================================================
+# ACTION : Envoi de la notification
+# ==============================================================================
+action:
+  # Délai pour s'assurer que tous les services sont prêts
+  - delay:
+      seconds: "{{ notification_delay }}"
+
+  # Envoi de la notification
+  - service: "{{ notify_service }}"
+    data:
+      title: "🔄 {{ appartement }} - Home Assistant"
+      message: "✅ Home Assistant a redémarré avec succès !"
+      data:
+        notification_icon: mdi:restart
+        tag: "ha_reboot_{{ appartement | lower }}"
+        group: "system-notifications"
+        channel: "System"
+        importance: default
+
+  # Log de l'événement
+  - service: system_log.write
+    data:
+      level: info
+      message: "Notification de redémarrage envoyée pour {{ appartement }}"

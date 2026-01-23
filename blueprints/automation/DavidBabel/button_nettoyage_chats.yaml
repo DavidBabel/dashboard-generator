@@ -1,0 +1,181 @@
+# Version: 1.0.4
+# ✅ working
+# Appartement: Carmes
+blueprint:
+  name: "🐈 Nettoyage Chats: Bouton (Aqara) → Petkit PuraMax"
+  description: >
+    Version: 1.0.4
+
+    Associe un bouton physique (ex: Aqara) à un appareil Petkit (intégration Jezza34000/homeassistant_petkit).
+
+    - `single` : lance le nettoyage (button.<petkit>_nettoyer)
+    - `hold` : toggle maintenance
+        - si (button.<petkit>_maintenance_demarrer) est disponible ⇒ démarrer maintenance
+        - sinon si (button.<petkit>_maintenance_quitter) est disponible ⇒ quitter maintenance
+
+    Prérequis côté bouton : disposer d'une entité "action" (souvent un `sensor.xxx_action`) qui prend les valeurs
+    `single`, `hold`, `release`.
+
+    Le blueprint attend un appareil Petkit (device) et en déduit automatiquement les entités :
+      - button.<prefix>_nettoyer
+      - button.<prefix>_maintenance_demarrer
+      - button.<prefix>_maintenance_quitter
+  domain: automation
+  # ==============================================================================
+  # INPUTS
+  # ==============================================================================
+  input:
+    # --------------------------------------------------------------------------
+    # Bouton physique
+    # Entité "action" (ex: Zigbee2MQTT) qui publie single/hold/release.
+    # --------------------------------------------------------------------------
+    button_action_entity:
+      name: 🖲️ Bouton - Entité action
+      description: "Entité (souvent `sensor.xxx_action`) qui passe successivement à `single`, `hold`, `release`."
+      default: sensor.bouton_litiere_chats_action
+      selector:
+        entity:
+          domain: sensor
+
+    # --------------------------------------------------------------------------
+    # Appareil Petkit
+    # Sélectionne le device Petkit.
+    # Le blueprint recherche ensuite les entités button.* du device pour trouver
+    # nettoyer / maintenance_demarrer / maintenance_quitter.
+    # --------------------------------------------------------------------------
+    petkit_device:
+      name: 🐾 Petkit - Appareil
+      description: "Sélectionne l'appareil Petkit (device) dans Home Assistant."
+      default: c9f0d650063492618b770f45cd9ced53
+      selector:
+        device:
+          integration: petkit
+
+    # --------------------------------------------------------------------------
+    # Options
+    # --------------------------------------------------------------------------
+    # (aucune)
+
+mode: single
+max_exceeded: silent
+
+variables:
+  petkit_device: !input petkit_device
+
+  petkit_device_entities: >
+    {{ device_entities(petkit_device) | default([], true) }}
+
+  clean_button: >
+    {% set ns = namespace(v='') %}
+    {% for e in petkit_device_entities %}
+      {% if ns.v == '' and e.startswith('button.') and e.endswith('_nettoyer') %}
+        {% set ns.v = e %}
+      {% endif %}
+    {% endfor %}
+    {{ ns.v }}
+
+  maintenance_start_button: >
+    {% set ns = namespace(v='') %}
+    {% for e in petkit_device_entities %}
+      {% if ns.v == '' and e.startswith('button.') and e.endswith('_maintenance_demarrer') %}
+        {% set ns.v = e %}
+      {% endif %}
+    {% endfor %}
+    {{ ns.v }}
+
+  maintenance_quit_button: >
+    {% set ns = namespace(v='') %}
+    {% for e in petkit_device_entities %}
+      {% if ns.v == '' and e.startswith('button.') and e.endswith('_maintenance_quitter') %}
+        {% set ns.v = e %}
+      {% endif %}
+    {% endfor %}
+    {{ ns.v }}
+
+  cooldown_seconds: 1
+
+trigger:
+  - platform: state
+    entity_id: !input button_action_entity
+    to:
+      - single
+      - hold
+      - release
+
+condition: []
+
+action:
+  - condition: template
+    value_template: >
+      {% set lt = this.attributes.last_triggered %}
+      {{ lt is none or (as_timestamp(now()) - as_timestamp(lt)) > (cooldown_seconds | int(1)) }}
+
+  - choose:
+      # ----------------------------------------------------------------------
+      # single => Nettoyer
+      # ----------------------------------------------------------------------
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.to_state is not none and trigger.to_state.state == 'single' }}"
+        sequence:
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ clean_button | length > 0 }}"
+                sequence:
+                  - service: button.press
+                    target:
+                      entity_id: "{{ clean_button }}"
+            default:
+              - service: logbook.log
+                data:
+                  name: "Petkit"
+                  message: "Impossible de trouver le bouton *_nettoyer pour ce device Petkit."
+
+      # ----------------------------------------------------------------------
+      # hold => Toggle maintenance selon disponibilité des boutons
+      # ----------------------------------------------------------------------
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.to_state is not none and trigger.to_state.state == 'hold' }}"
+        sequence:
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: >
+                      {{ (maintenance_start_button | length > 0)
+                         and not is_state(maintenance_start_button, 'unavailable')
+                         and not is_state(maintenance_start_button, 'unknown') }}
+                sequence:
+                  - service: button.press
+                    target:
+                      entity_id: "{{ maintenance_start_button }}"
+
+              - conditions:
+                  - condition: template
+                    value_template: >
+                      {{ (maintenance_quit_button | length > 0)
+                         and not is_state(maintenance_quit_button, 'unavailable')
+                         and not is_state(maintenance_quit_button, 'unknown') }}
+                sequence:
+                  - service: button.press
+                    target:
+                      entity_id: "{{ maintenance_quit_button }}"
+
+            default:
+              - service: logbook.log
+                data:
+                  name: "Petkit"
+                  message: >
+                    Maintenance toggle impossible: boutons introuvables ou indisponibles
+                    ({{ maintenance_start_button | default('') }} / {{ maintenance_quit_button | default('') }}).
+
+      # ----------------------------------------------------------------------
+      # release => ne rien faire (utile avec Zigbee2MQTT qui émet hold + release)
+      # ----------------------------------------------------------------------
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.to_state is not none and trigger.to_state.state == 'release' }}"
+        sequence: []
+
+    default: []

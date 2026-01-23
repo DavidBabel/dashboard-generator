@@ -1,0 +1,271 @@
+#!/usr/bin/env bash
+# Pre-commit hook pour gérer automatiquement version et statut des blueprints
+# Compatible Windows (Git Bash), Linux et Mac
+#
+# Structure attendue en début de fichier :
+#   # Version: X.X.X
+#   # 🧪 to test : <commit message>   OU   # ✅ working   OU   # ✅ working : <commentaire>
+#   # Appartement: ...
+#
+# Logique :
+#   - Si le fichier est modifié (pas juste validation) → bump version + statut "🧪 to test"
+#   - Si seule la ligne 2 change de "🧪 to test" vers "✅ working" → pas de bump (validation)
+#   - Le message de commit final est appliqué par le commit-msg hook
+#   - Génère automatiquement status.md avec l'état de tous les blueprints
+
+BLUEPRINTS_DIR="blueprints/automation/DavidBabel"
+STATUS_FILE="blueprints/status.md"
+
+# En pre-commit, on n'a pas encore le message de commit
+# On utilise un placeholder qui sera remplacé par commit-msg hook
+commit_msg="pending"
+
+# Récupérer les fichiers stagés (on teste en mode texte, puis on itère en NUL-delimited)
+staged_files_text=$(git diff --cached --name-only --diff-filter=ACM)
+
+if [ -z "$staged_files_text" ]; then
+    exit 0
+fi
+
+modified_files=()
+validated_files=()
+
+while IFS= read -r -d '' file; do
+    # Protection Windows: enlever un éventuel \r résiduel
+    file=${file//$'\r'/}
+
+    # Exclure les blueprints dans un dossier "trash"
+    if [[ "$file" == *"/trash/"* ]]; then
+        continue
+    fi
+    # Vérifier si c'est un blueprint
+    if [[ $file =~ ^blueprints/automation/.+\.yaml$ ]] && [ -f "$file" ]; then
+
+        # Lire les lignes actuelles
+        line1=$(sed -n '1p' "$file" | tr -d '\r')
+        line2=$(sed -n '2p' "$file" | tr -d '\r')
+
+        # Si le hook a déjà préparé ce fichier pour CE commit (placeholder pending), ne pas rebump
+        if echo "$line2" | grep -Eq "to test[[:space:]]*:[[:space:]]*pending"; then
+            echo "✓ Blueprint déjà préparé : $file"
+            continue
+        fi
+
+        # Vérifier si le fichier a déjà une version
+        if [[ ! "$line1" =~ ^#\ Version: ]]; then
+            # Nouveau fichier sans version → initialiser
+            current_version="0.0.0"
+            new_version="1.0.0"
+
+            # Ajouter les lignes de version et statut au début
+            temp_file="${file}.tmp"
+            {
+                echo "# Version: $new_version"
+                echo "# 🧪 to test : $commit_msg"
+                cat "$file"
+            } > "$temp_file"
+            mv "$temp_file" "$file"
+
+            git add "$file"
+            modified_files+=("$file: NOUVEAU → $new_version")
+            echo "✓ Nouveau blueprint initialisé : $file"
+            continue
+        fi
+
+        # Extraire la version actuelle
+        current_version=$(echo "$line1" | sed -E 's/^# Version:\s*([0-9]+\.[0-9]+\.[0-9]+)/\1/')
+
+        # Vérifier si c'est une simple validation (seul changement = ligne 2 → "✅ working")
+        # On compare le diff pour voir si seule la ligne 2 a changé
+        diff_output=$(git diff --cached -U0 "$file" 2>/dev/null | tr -d '\r')
+
+        # Détecter si c'est uniquement un passage vers "✅ working" (détection par mot-clé, pas emoji)
+        is_validation_only=false
+        if echo "$diff_output" | grep -q "^+.*working"; then
+            # Si on passe de "to test" vers "working"
+            if echo "$diff_output" | grep -q "^-.*to test"; then
+                # Vérifier qu'il n'y a pas d'autres modifications significatives
+                # On exclut les lignes de diff (--- et +++), les marqueurs de contexte (@@), et les lignes de statut
+                other_changes=$(echo "$diff_output" | grep -E "^[+-]" | grep -v "^---" | grep -v "^+++" | grep -v "^@@" | grep -v "^-.*to test" | grep -v "^+.*working" | wc -l)
+                if [ "$other_changes" -eq 0 ]; then
+                    is_validation_only=true
+                fi
+            fi
+        fi
+
+        if [ "$is_validation_only" = true ]; then
+            # Validation uniquement → pas de bump de version
+            validated_files+=("$file: ✅ validé (v$current_version)")
+            echo "✓ Blueprint validé (sans bump) : $file"
+            continue
+        fi
+
+        # Modification normale → bump version + statut "to test"
+        major=$(echo "$current_version" | cut -d. -f1)
+        minor=$(echo "$current_version" | cut -d. -f2)
+        patch=$(echo "$current_version" | cut -d. -f3)
+        patch=$((patch + 1))
+        new_version="$major.$minor.$patch"
+
+        # Créer un fichier temporaire pour les modifications
+        temp_file="${file}.tmp"
+
+        # Traiter le fichier
+        awk -v new_ver="$new_version" -v commit_msg="$commit_msg" '
+            # Ligne 1 : Version
+            NR == 1 && /^# Version:/ {
+                print "# Version: " new_ver
+                next
+            }
+            # Ligne 2 : Statut (remplacer par "to test" avec message de commit)
+            NR == 2 && /^#.*to test|^#.*working/ {
+                print "# 🧪 to test : " commit_msg
+                next
+            }
+            # Ligne 2 : Si pas de statut existant, l insérer avant la ligne actuelle
+            NR == 2 && !/^#.*to test/ && !/^#.*working/ {
+                print "# 🧪 to test : " commit_msg
+                print
+                next
+            }
+            # Remplacer Version: dans la description
+            in_desc && /^[[:space:]]+Version:/ {
+                sub(/Version:[[:space:]]*[0-9]+\.[0-9]+\.[0-9]+/, "Version: " new_ver)
+                print
+                in_desc = 0
+                next
+            }
+            # Détecter le début de description
+            /description:[[:space:]]*>/ {
+                in_desc = 1
+            }
+            # Imprimer toutes les autres lignes
+            { print }
+        ' "$file" > "$temp_file"
+
+        # Remplacer le fichier original
+        mv "$temp_file" "$file"
+
+        # Ajouter le fichier modifié au commit
+        git add "$file"
+
+        modified_files+=("$file: $current_version → $new_version")
+        echo "✓ Version mise à jour : $file"
+    fi
+done < <(git diff --cached --name-only -z --diff-filter=ACM)
+
+# ==============================================================================
+# GÉNÉRATION DU FICHIER STATUS.MD
+# ==============================================================================
+generate_status() {
+    echo "# Statut des Blueprints" > "$STATUS_FILE"
+    echo "" >> "$STATUS_FILE"
+    echo "_Généré automatiquement par pre-commit_" >> "$STATUS_FILE"
+    echo "" >> "$STATUS_FILE"
+
+    # Parcourir tous les fichiers yaml du dossier blueprints (triés alphabétiquement)
+    for yaml_file in $(ls "$BLUEPRINTS_DIR"/*.yaml 2>/dev/null | sort); do
+        if [ -f "$yaml_file" ]; then
+            filename=$(basename "$yaml_file")
+            line2=$(sed -n '2p' "$yaml_file" | tr -d '\r')
+
+            # Extraire l'icône et le commentaire (détection par mots-clés, pas emojis)
+            if echo "$line2" | grep -q "working"; then
+                icon="✅"
+                # Extraire le commentaire après "working" (avec ou sans :)
+                comment=$(echo "$line2" | sed -E 's/^#[^:]*:\s*//')
+            elif echo "$line2" | grep -q "to test"; then
+                icon="🧪"
+                # Extraire le commentaire après "to test :"
+                comment=$(echo "$line2" | sed -E 's/^#[^:]*:\s*//')
+            else
+                icon="❓"
+                comment=""
+            fi
+
+            # Écrire la ligne dans status.md avec backticks autour du filename
+            if [ -n "$comment" ]; then
+                echo "$icon \`$filename\` : $comment" >> "$STATUS_FILE"
+            else
+                echo "$icon \`$filename\`" >> "$STATUS_FILE"
+            fi
+        fi
+    done
+
+    # Ajouter status.md au commit
+    git add "$STATUS_FILE"
+    echo ""
+    echo "📋 status.md régénéré"
+}
+
+# ==============================================================================
+# GÉNÉRATION DU FICHIER LINKS.MD
+# ==============================================================================
+generate_links() {
+    LINKS_FILE="blueprints/links.md"
+    BASE_URL="https://raw.githubusercontent.com/DavidBabel/ha/master/blueprints/automation/DavidBabel/"
+
+    # Vider le fichier de sortie
+    > "$LINKS_FILE"
+
+    # Tableau associatif pour stocker les liens par catégorie
+    declare -A categories
+
+    # Parcourir tous les fichiers .yaml
+    for yaml_file in "$BLUEPRINTS_DIR"/*.yaml; do
+        if [ -f "$yaml_file" ]; then
+            filename=$(basename "$yaml_file")
+
+            # Lire la troisième ligne pour extraire la catégorie
+            category=$(sed -n '3p' "$yaml_file" | tr -d '\r' | grep -o "# Appartement:.*" | sed 's/# Appartement: *//')
+
+            # Si pas de catégorie trouvée, mettre "Autre"
+            if [ -z "$category" ]; then
+                category="Autre"
+            fi
+
+            # Ajouter le lien à la catégorie
+            if [ -z "${categories[$category]}" ]; then
+                categories[$category]="${BASE_URL}${filename}"
+            else
+                categories[$category]="${categories[$category]}"$'\n'"${BASE_URL}${filename}"
+            fi
+        fi
+    done
+
+    # Trier les catégories et écrire dans le fichier (safe si espaces)
+    while IFS= read -r category; do
+        [ -z "$category" ] && continue
+        echo "# Appartement: $category" >> "$LINKS_FILE"
+        echo "${categories[$category]}" >> "$LINKS_FILE"
+        echo "" >> "$LINKS_FILE"
+    done < <(printf '%s\n' "${!categories[@]}" | sort)
+
+    # Ajouter links.md au commit
+    git add "$LINKS_FILE"
+    echo "📋 links.md régénéré"
+}
+
+# Générer les fichiers
+generate_status
+generate_links
+
+# Résumé
+if [ ${#validated_files[@]} -gt 0 ]; then
+    echo ""
+    echo "✅ Blueprints validés (sans bump de version) :"
+    for msg in "${validated_files[@]}"; do
+        echo "  • $msg"
+    done
+fi
+
+if [ ${#modified_files[@]} -gt 0 ]; then
+    echo ""
+    echo "📦 Versions incrémentées + statut '🧪 to test' :"
+    for msg in "${modified_files[@]}"; do
+        echo "  • $msg"
+    done
+fi
+
+exit 0
+

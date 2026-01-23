@@ -1,0 +1,2 @@
+shell_command:
+  update_blueprints: bash /share/scripts/update_blueprints_auto.sh

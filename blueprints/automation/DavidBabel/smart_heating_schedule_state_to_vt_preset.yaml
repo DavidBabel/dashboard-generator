@@ -1,0 +1,165 @@
+# Version: 1.0.5
+# 🧪 to test : add min preset to VTs schedule
+# Appartement: Tous
+blueprint:
+  name: "📅🌡️ Schedule State → VT Preset 🔵 PAR CHAMBRE"
+  description: >
+    Version: 1.0.5
+    Synchronise un capteur schedule_state (sensor.xxx) vers un Versatile Thermostat,
+    en appliquant directement l'état du capteur comme preset_mode.
+
+    Objectif : éviter l'erreur "expected HVACMode..." en n'utilisant PAS climate.set_hvac_mode
+    avec des valeurs comme eco/comfort (qui sont des presets, pas des HVAC modes).
+
+    Fonctionnement :
+    - Déclenchement à chaque changement d'état du capteur schedule_state + au démarrage de HA.
+    - Normalise l'état en minuscule (lower) puis tente de l'appliquer via climate.set_preset_mode.
+    - Vérifie que le preset est supporté (attribut preset_modes) avant d'appliquer.
+    - Trace systématiquement dans le logbook (succès + preset non supporté).
+
+    Pré-requis :
+    - Le capteur schedule_state doit retourner des valeurs qui existent comme presets côté VT
+      (ex: eco/comfort/boost/frost selon ta config).
+  domain: automation
+  # ==============================================================================
+  # INPUTS - Paramètres du blueprint
+  # ==============================================================================
+  input:
+    # --------------------------------------------------------------------------
+    # Thermostat cible : Versatile Thermostat
+    # Type attendu : climate.xxx de l'intégration versatile_thermostat
+    # Valeur attendue : supporte des presets (preset_modes)
+    # --------------------------------------------------------------------------
+    thermostat:
+      name: 🌡️ Versatile Thermostat
+      default: climate.chauffage_vt_engel_chambre_nord
+      selector:
+        entity:
+          domain: climate
+          integration: versatile_thermostat
+
+    # --------------------------------------------------------------------------
+    # Capteur schedule_state (filtré sur l'intégration schedule_state)
+    # Type attendu : sensor.xxx
+    # Valeur attendue : état texte (ex: eco, comfort, boost, frost)
+    # --------------------------------------------------------------------------
+    schedule_entity:
+      name: 📅 Capteur schedule_state
+      description: >
+        Choisir le schedule de chauffage appliqué à cette pièce
+        ⚠️ il faut modifier cette valeur dans les deux automations (reset & state)
+      default: sensor.schedule_chambre_default
+      selector:
+        entity:
+          domain: sensor
+          integration: schedule_state
+
+    min_temperature_entity:
+      name: 🧊 Température min (input_number)
+      description: >
+        Seuil plancher : si la température actuelle du VT est sous ce seuil,
+        on n'applique pas le preset (ex: pour éviter de remonter le chauffage).
+      default: input_number.min_temperature_chauffage
+      selector:
+        entity:
+          domain: input_number
+
+# ==============================================================================
+# MODE RESTART : on applique toujours le dernier état
+# ==============================================================================
+mode: restart
+max_exceeded: silent
+
+# ==============================================================================
+# VARIABLES : accès simple aux inputs
+# ==============================================================================
+variables:
+  schedule_ent: !input schedule_entity
+  thermostat_ent: !input thermostat
+  min_temp_entity: !input min_temperature_entity
+
+# ==============================================================================
+# TRIGGER : changement d'état du schedule
+# ==============================================================================
+trigger:
+  - platform: state
+    entity_id: !input schedule_entity
+
+  # --------------------------------------------------------------------------
+  # Trigger sécurité : redémarrage Home Assistant
+  # Objectif : ré-appliquer le bon preset si HA redémarre entre deux événements
+  # --------------------------------------------------------------------------
+  - platform: homeassistant
+    event: start
+
+# ==============================================================================
+# ACTIONS
+# ==============================================================================
+action:
+  - variables:
+      # Permet l'exécution manuelle (Run actions) : si trigger n'existe pas,
+      # on lit l'état actuel du capteur schedule_state.
+      schedule_state_raw: >
+        {% if trigger is defined and trigger.to_state is not none %}
+          {{ trigger.to_state.state }}
+        {% else %}
+          {{ states(schedule_ent) }}
+        {% endif %}
+      schedule_state: "{{ schedule_state_raw | string | lower }}"
+      desired_preset: "{{ schedule_state }}"
+
+      preset_modes: "{{ state_attr(thermostat_ent, 'preset_modes') or [] }}"
+      preset_supported: "{{ desired_preset in preset_modes }}"
+
+      vt_temp_now: "{{ state_attr(thermostat_ent, 'temperature') | float(0) }}"
+      min_temp_value: "{{ states(min_temp_entity) | float(0) }}"
+
+  # Ignore les états techniques
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ schedule_state in ['unknown', 'unavailable', 'none', ''] }}"
+        sequence:
+          - stop: "schedule_state invalide"
+
+  # 🧊 Sous plancher min : ne pas appliquer de preset
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ min_temp_value > 0 and vt_temp_now < min_temp_value }}"
+        sequence:
+          - service: logbook.log
+            data:
+              name: "Schedule → VT"
+              message: "🧊 skip preset (VT sous min) : VT={{ vt_temp_now }}°C < min={{ min_temp_value }}°C (preset={{ desired_preset }}) ({{ thermostat_ent }})"
+          - stop: "VT sous min"
+
+  # Applique le preset si supporté
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ preset_supported }}"
+        sequence:
+          - service: logbook.log
+            data:
+              name: "Schedule → VT"
+              message: "✅ schedule_state={{ schedule_state_raw }} → preset={{ desired_preset }} ({{ thermostat_ent }})"
+
+          - service: climate.set_preset_mode
+            target:
+              entity_id: "{{ thermostat_ent }}"
+            data:
+              preset_mode: "{{ desired_preset }}"
+
+      # Sinon : log et stop
+      - conditions:
+          - condition: template
+            value_template: "{{ not preset_supported }}"
+        sequence:
+          - service: logbook.log
+            data:
+              name: "Schedule → VT"
+              message: >
+                ⚠️ preset non supporté : '{{ desired_preset }}' (schedule_state='{{ schedule_state_raw }}')
+                presets_dispos={{ preset_modes }}
+          - stop: "Preset non supporté"

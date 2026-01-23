@@ -1,0 +1,180 @@
+# Version: 1.0.8
+# ✅ working
+# Appartement: Romains
+blueprint:
+  name: "❤️ Health Check – Surveillance Détecteurs de Présence Aqara"
+  description: >
+    Version: 1.0.8
+    Surveille vos détecteurs de présence Aqara et envoie une alerte critique
+    lorsqu'un capteur devient inaccessible (pile faible, déconnexion, etc.).
+    Notification de retour à la normale incluse.
+  domain: automation
+  # ==============================================================================
+  # INPUTS - Configuration des paramètres du blueprint
+  # ==============================================================================
+  input:
+    # --------------------------------------------------------------------------
+    # Détecteurs de présence : capteurs à surveiller
+    # Type attendu : binary_sensor.xxx (détecteurs Aqara ou similaires)
+    # Valeur attendue : on/off/unavailable (on = présence, unavailable = hors ligne)
+    # --------------------------------------------------------------------------
+    capteurs:
+      name: 🕵️ Détecteurs de présence
+      description: Sélectionnez les détecteurs de présence Aqara à surveiller
+      default:
+        - binary_sensor.detecteur_romains_communs_presence
+      selector:
+        entity:
+          domain: binary_sensor
+          multiple: true
+
+    # --------------------------------------------------------------------------
+    # Délai avant alerte : temps d'attente pour éviter les fausses alertes
+    # Type attendu : nombre entier
+    # Valeur attendue : durée en minutes (recommandé : 5)
+    # --------------------------------------------------------------------------
+    delai_avant_alerte:
+      name: ⏱️ Délai avant alerte
+      description: Temps d'attente avant de déclencher l'alerte d'inaccessibilité (évite les fausses alertes)
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 30
+          unit_of_measurement: minutes
+
+    # --------------------------------------------------------------------------
+    # Intervalle de rappel : fréquence des notifications répétitives
+    # Type attendu : nombre entier
+    # Valeur attendue : durée en minutes (recommandé : 30)
+    # --------------------------------------------------------------------------
+    delai_rappel:
+      name: 🔁 Intervalle de rappel
+      description: Temps entre deux notifications tant que le capteur est hors ligne
+      default: 30
+      selector:
+        number:
+          min: 5
+          max: 180
+          unit_of_measurement: minutes
+
+    # --------------------------------------------------------------------------
+    # Device de notification : appareil mobile recevant les alertes
+    # Type attendu : device avec l'app mobile Home Assistant installée
+    # --------------------------------------------------------------------------
+    notify_device:
+      name: 📱 Device à notifier
+      description: Le device doit utiliser l'application mobile officielle Home Assistant.
+      selector:
+        device:
+          filter:
+            integration: mobile_app
+
+# ==============================================================================
+# MODE PARALLEL : Permet de surveiller plusieurs capteurs simultanément
+# ==============================================================================
+mode: parallel
+max: 10
+
+# ==============================================================================
+# TRIGGERS : Événements qui déclenchent l'automation
+# ==============================================================================
+trigger:
+  # --------------------------------------------------------------------------
+  # Trigger 1 : Capteur inaccessible
+  # Se déclenche quand : le capteur passe à unavailable pendant X minutes
+  # Objectif : détecter une panne ou batterie faible
+  # --------------------------------------------------------------------------
+  - platform: state
+    entity_id: !input capteurs
+    to: "unavailable"
+    for:
+      minutes: !input delai_avant_alerte
+    id: alerte
+
+  # --------------------------------------------------------------------------
+  # Trigger 2 : Capteur de retour en ligne
+  # Se déclenche quand : le capteur sort de l'état unavailable
+  # Objectif : notifier le retour à la normale
+  # Note : Le délai 'for' évite les fausses notifications au redémarrage de HA
+  # --------------------------------------------------------------------------
+  - platform: state
+    entity_id: !input capteurs
+    from: "unavailable"
+    for:
+      minutes: 2
+    id: retour
+
+# ==============================================================================
+# VARIABLES : Préparation des données pour les notifications
+# ==============================================================================
+variables:
+  capteur: "{{ trigger.entity_id }}"
+  nom: "{{ state_attr(trigger.entity_id, 'friendly_name') }}"
+  rappel: !input delai_rappel
+  notify_device: !input notify_device
+  notify_service: >
+    notify.mobile_app_{{ device_attr(notify_device, 'name')
+      | lower
+      | replace(' ', '_')
+      | replace('-', '_') }}
+
+action:
+  # Vérifier que Home Assistant est allumé depuis au moins 5 minutes
+  - condition: template
+    value_template: >
+      {{ (as_timestamp(now()) - as_timestamp(state_attr('homeassistant', 'last_boot'))) > 300 }}
+
+  - choose:
+      # =========================
+      # 🚨 CAPTEUR INACCESSIBLE
+      # =========================
+      - conditions:
+          - condition: trigger
+            id: alerte
+        sequence:
+          - repeat:
+              while:
+                - condition: template
+                  value_template: "{{ states(capteur) == 'unavailable' }}"
+              sequence:
+                - service: "{{ notify_service }}"
+                  data:
+                    title: "🚨 CAPTEUR INACCESSIBLE"
+                    message: >
+                      ⚠️ Le détecteur de présence est hors ligne !
+                      📍 {{ nom }}
+                    data:
+                      tag: "presence_check_{{ capteur }}"
+                      notification_icon: mdi:motion-sensor-off
+                      push:
+                        sound:
+                          name: default
+                          critical: 1
+                          volume: 1.0
+                      ttl: 0
+                      priority: high
+                      clickAction: /presence-salon/
+                      url: /presence-salon/
+
+                - delay:
+                    minutes: "{{ rappel | int }}"
+
+      # =========================
+      # ✅ RETOUR EN LIGNE
+      # =========================
+      - conditions:
+          - condition: trigger
+            id: retour
+        sequence:
+          - service: "{{ notify_service }}"
+            data:
+              title: "✅ Capteur rétabli"
+              message: >
+                🟢 Le détecteur de présence est de nouveau en ligne.
+                📍 {{ nom }}
+              data:
+                tag: "presence_check_{{ capteur }}"
+                notification_icon: mdi:motion-sensor
+                clickAction: /presence-salon/
+                url: /presence-salon/

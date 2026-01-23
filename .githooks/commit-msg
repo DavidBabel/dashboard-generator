@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# Commit-msg hook pour mettre à jour le message dans la ligne "# 🧪 to test"
+# S'exécute après la saisie du message de commit mais avant la finalisation
+#
+# Rôle : Remplace le placeholder "pending" par le vrai message de commit
+# Compatible avec le workflow pre-commit qui bump la version
+
+# NOTE:
+# Certaines UIs (ex: VS Code) rendent peu fiable l'inclusion de modifications de fichiers
+# réalisées depuis commit-msg. La mise à jour "pending" → "<message>" est donc faite
+# en post-commit via amend (hook post-commit), afin de garantir un working tree propre.
+
+exit 0
+
+COMMIT_MSG_FILE=$1
+
+# Lire le message de commit (première ligne uniquement)
+commit_msg=$(head -1 "$COMMIT_MSG_FILE" | tr -d '\r' | sed 's/["\`$]//g')
+
+if [ -z "$commit_msg" ]; then
+    exit 0
+fi
+
+# Récupérer les fichiers stagés
+staged_files_text=$(git diff --cached --name-only --diff-filter=ACM)
+
+if [ -z "$staged_files_text" ]; then
+    exit 0
+fi
+
+updated_files=()
+
+while IFS= read -r -d '' file; do
+    file=${file//$'\r'/}
+
+    # Exclure les blueprints dans un dossier "trash"
+    if [[ "$file" == *"/trash/"* ]]; then
+        continue
+    fi
+    # Vérifier si c'est un blueprint avec une ligne "to test"
+    if [[ $file =~ ^blueprints/automation/.+\.yaml$ ]] && [ -f "$file" ]; then
+        line2=$(sed -n '2p' "$file" | tr -d '\r')
+
+        # Si la ligne 2 contient "to test", mettre à jour le message
+        if echo "$line2" | grep -q "to test"; then
+            # Créer un fichier temporaire avec le nouveau message
+            temp_file="${file}.tmp"
+
+            awk -v commit_msg="$commit_msg" '
+                NR == 2 && /^#.*to test/ {
+                    print "# 🧪 to test : " commit_msg
+                    next
+                }
+                { print }
+            ' "$file" > "$temp_file"
+
+            # Remplacer le fichier original
+            mv "$temp_file" "$file"
+
+            # Re-stager ici pour que la mise à jour soit incluse dans LE commit
+            # (évite un post-commit qui amende et laisse des fichiers modifiés)
+            git add "$file"
+
+            updated_files+=("$file")
+            echo "✓ Message mis à jour dans : $(basename $file)"
+        fi
+    fi
+done < <(git diff --cached --name-only -z --diff-filter=ACM)
+
+if [ ${#updated_files[@]} -gt 0 ]; then
+    echo ""
+    echo "📝 Messages mis à jour et inclus dans le commit"
+fi
+
+exit 0

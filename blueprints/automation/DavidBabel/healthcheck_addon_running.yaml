@@ -1,0 +1,155 @@
+# Version: 1.0.4
+# ✅ working
+# Appartement: Tous
+blueprint:
+  name: "🩺 Healthcheck - Add-on -"
+  description: >
+    TODO : essayer de restart l'addon en plus ?
+    Version: 1.0.4
+    Envoie une alerte quand un add-on (ou service) passe à l'état arrêté, puis une notification
+    de retour à la normale quand il redémarre.
+
+    Ce blueprint se base sur un binary_sensor "en cours d'exécution" (on = tourne, off = arrêté)
+    exposé par l'add-on (ou par Supervisor).
+  domain: automation
+  # ==============================================================================
+  # INPUTS - Configuration des paramètres du blueprint
+  # ==============================================================================
+  input:
+    # --------------------------------------------------------------------------
+    # Capteur “en cours d'exécution”
+    # Type attendu : binary_sensor.xxx
+    # Valeur attendue : on = service/add-on en cours d'exécution ; off = arrêté
+    # Comment obtenir : activer l'entité dans l'add-on / Supervisor si disponible
+    # --------------------------------------------------------------------------
+    running_sensor:
+      name: 🧩 Capteur “en cours d'exécution”
+      description: >
+        Binary sensor qui passe à on quand l'add-on tourne.
+        Exemple : binary_sensor.advanced_ssh_web_terminal_en_cours_d_execution
+      default: binary_sensor.advanced_ssh_web_terminal_en_cours_d_execution
+      selector:
+        entity:
+          domain: binary_sensor
+
+    # --------------------------------------------------------------------------
+    # Délai avant alerte “arrêté”
+    # Type attendu : nombre entier
+    # Valeur attendue : minutes
+    # --------------------------------------------------------------------------
+    down_for_minutes:
+      name: ⏱️ Délai avant alerte (minutes)
+      description: >
+        Evite les faux positifs lors des micro-coupures / redémarrages.
+      default: 5
+      selector:
+        number:
+          min: 0
+          max: 120
+          step: 1
+          unit_of_measurement: minutes
+
+    # --------------------------------------------------------------------------
+    # Device de notification : appareil mobile recevant les alertes
+    # Type attendu : device avec l'app mobile Home Assistant installée
+    # --------------------------------------------------------------------------
+    notify_device:
+      name: 📱 Device à notifier
+      description: >
+        Le device doit utiliser l'application mobile officielle Home Assistant.
+      selector:
+        device:
+          filter:
+            integration: mobile_app
+
+# ==============================================================================
+# MODE RESTART : permet de stopper le rappel dès que le service redémarre
+# ==============================================================================
+mode: restart
+
+# ==============================================================================
+# VARIABLES : Préparation des données pour les notifications
+# ==============================================================================
+variables:
+  running_sensor: !input running_sensor
+
+  service_name: >
+    {% set raw = running_sensor.split('.')[1] if '.' in running_sensor else running_sensor %}
+    {% set raw = raw | regex_replace('_en_cours_d_execution$', '') %}
+    {% set raw = raw | regex_replace('^advanced_', '') %}
+    {{ raw | replace('_', ' ') | trim }}
+
+  notify_device: !input notify_device
+  notify_service: >
+    notify.mobile_app_{{ device_attr(notify_device, 'name')
+      | lower
+      | replace(' ', '_')
+      | replace('-', '_') }}
+
+  notification_tag: >
+    healthcheck_{{ running_sensor | replace('.', '_') }}
+
+# ==============================================================================
+# TRIGGERS
+# ==============================================================================
+trigger:
+  # --------------------------------------------------------------------------
+  # Trigger 1 : Service/Add-on arrêté
+  # Se déclenche quand : le capteur passe à off pendant X minutes
+  # Objectif : envoyer une alerte + (optionnel) rappels
+  # --------------------------------------------------------------------------
+  - platform: state
+    entity_id: !input running_sensor
+    to: "off"
+    for:
+      minutes: !input down_for_minutes
+    id: down
+
+  # --------------------------------------------------------------------------
+  # Trigger 2 : Service/Add-on redémarré
+  # Se déclenche quand : le capteur repasse à on
+  # Objectif : notifier le retour à la normale (et arrêter le rappel)
+  # --------------------------------------------------------------------------
+  - platform: state
+    entity_id: !input running_sensor
+    to: "on"
+    id: up
+
+# ==============================================================================
+# ACTIONS
+# ==============================================================================
+action:
+  - choose:
+      # ------------------------------------------------------------------------
+      # CAS 1 : Arrêt détecté → notification + rappels
+      # ------------------------------------------------------------------------
+      - conditions:
+          - condition: trigger
+            id: down
+        sequence:
+          - service: "{{ notify_service }}"
+            data:
+              title: "🛑 {{ service_name }}"
+              message: >
+                🚨 Service/Add-on arrêté (capteur: {{ running_sensor }})
+              data:
+                tag: "{{ notification_tag }}"
+                notification_icon: mdi:server-off
+                ttl: 0
+                priority: high
+
+      # ------------------------------------------------------------------------
+      # CAS 2 : Redémarrage détecté → notification retour à la normale
+      # ------------------------------------------------------------------------
+      - conditions:
+          - condition: trigger
+            id: up
+        sequence:
+          - service: "{{ notify_service }}"
+            data:
+              title: "✅ {{ service_name }}"
+              message: >
+                Le service/add-on a redémarré.
+              data:
+                tag: "{{ notification_tag }}"
+                notification_icon: mdi:check-circle

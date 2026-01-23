@@ -1,0 +1,262 @@
+# Version: 1.1.3
+# 🧪 to test : try to reboot the power on shelly on fail
+# Appartement: Tous
+blueprint:
+  name: "❤️ Health Check – Surveillance Connexion Prise Shelly"
+  description: >
+    Version: 1.1.3
+    Envoie une alerte lorsqu'une prise Shelly est hors ligne pendant une durée configurable
+    et notifie quand elle revient en ligne.
+  domain: automation
+  # ==============================================================================
+  # INPUTS - Configuration des paramètres du blueprint
+  # ==============================================================================
+  input:
+    # --------------------------------------------------------------------------
+    # Capteur de connexion : sensor indiquant l'état de la prise
+    # Type attendu : binary_sensor.xxx (créé pour surveiller la prise Shelly)
+    # Valeur attendue : on = connectée, off = hors ligne
+    # --------------------------------------------------------------------------
+    device_sensor:
+      name: 🔌 Capteur de connexion
+      description: Le capteur binaire qui indique l'état de connexion de la prise Shelly
+      default: binary_sensor.prise_shelly_connexion
+      selector:
+        entity:
+          domain: binary_sensor
+
+    # --------------------------------------------------------------------------
+    # Appartement : identification du site concerné
+    # Type attendu : sélection parmi les options définies
+    # Valeur attendue : emoji + nom d'appartement
+    # --------------------------------------------------------------------------
+    appartement:
+      name: 🏠 Appartement
+      description: Sélectionnez l'appartement concerné
+      default: "🟧 Engel"
+      selector:
+        select:
+          options:
+            - "🟧 Engel"
+            - "🟩 Romains"
+            - "🟦 Carmes"
+
+    # --------------------------------------------------------------------------
+    # Durée hors ligne : délai avant déclenchement de l'alerte
+    # Type attendu : nombre entier
+    # Valeur attendue : durée en minutes (recommandé : 10)
+    # --------------------------------------------------------------------------
+    offline_duration:
+      name: ⏱️ Durée hors ligne avant alerte
+      description: Temps d'attente avant d'envoyer l'alerte de déconnexion
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 120
+          unit_of_measurement: minutes
+
+    notify_device:
+      name: 📱 Device à notifier
+      description: >
+        Le device doit utiliser l'application mobile officielle Home Assistant.
+      selector:
+        device:
+          filter:
+            integration: mobile_app
+
+# ==============================================================================
+# MODE RESTART : Redémarre l'automation si elle se déclenche pendant son exécution
+# ==============================================================================
+mode: restart
+
+# ==============================================================================
+# VARIABLES : Préparation des données pour les notifications
+# ==============================================================================
+variables:
+  appartement: !input appartement
+  notify_device: !input notify_device
+  notify_service: >
+    notify.mobile_app_{{ device_attr(notify_device, 'name')
+      | lower
+      | replace(' ', '_')
+      | replace('-', '_') }}
+  device_name: "Prise Shelly {{ appartement }}"
+  notification_tag: "alerte_shelly_{{ appartement | lower }}"
+  offline_duration: !input offline_duration
+  appartement_key: "{{ appartement.split(' ', 1)[1] | lower }}"
+  power_switch: "switch.plug_chauffage_{{ appartement_key }}"
+
+# ==============================================================================
+# TRIGGER VARIABLES : Variables disponibles dans les triggers (ex: template trigger)
+# Note : `variables:` n'est pas évalué côté trigger.
+# ==============================================================================
+trigger_variables:
+  appartement: !input appartement
+  appartement_key: "{{ appartement.split(' ', 1)[1] | lower }}"
+  power_switch: "switch.plug_chauffage_{{ appartement_key }}"
+
+# ==============================================================================
+# TRIGGERS : Événements qui déclenchent l'automation
+# ==============================================================================
+trigger:
+  # --------------------------------------------------------------------------
+  # Trigger 1 : Prise débranchée (hors ligne)
+  # Se déclenche quand : la prise est off pendant X minutes
+  # Objectif : détecter une panne ou une déconnexion
+  # --------------------------------------------------------------------------
+  - platform: state
+    entity_id: !input device_sensor
+    to: "off"
+    for:
+      minutes: !input offline_duration
+    id: debranche
+
+  # --------------------------------------------------------------------------
+  # Trigger 2 : Prise rebranchée (retour en ligne)
+  # Se déclenche quand : la prise repasse de off à on
+  # Objectif : notifier le retour à la normale
+  # Note : Le délai 'for' évite les fausses notifications au redémarrage de HA
+  # --------------------------------------------------------------------------
+  - platform: state
+    entity_id: !input device_sensor
+    from: "off"
+    to: "on"
+    for:
+      minutes: 1
+    id: rebranche
+
+  # --------------------------------------------------------------------------
+  # Trigger 3 : Check quotidien
+  # Se déclenche tous les jours à 13:00
+  # Objectif : vérifier que la prise alimente bien (switch = on)
+  # --------------------------------------------------------------------------
+  - platform: time
+    at: "13:15:00"
+    id: daily_check
+
+  # --------------------------------------------------------------------------
+  # Trigger 4/5 : Changement courant (switch)
+  # Déclenché quand le switch de la prise change (OFF/ON)
+  # Remarque : on utilise des template triggers car entity_id n'est pas templatable.
+  # --------------------------------------------------------------------------
+  - platform: template
+    value_template: "{{ is_state(power_switch, 'off') }}"
+    for:
+      minutes: !input offline_duration
+    id: courant_off
+
+  - platform: template
+    value_template: "{{ is_state(power_switch, 'on') }}"
+    id: courant_on
+
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: courant_off
+        sequence:
+          - service: switch.turn_on
+            target:
+              entity_id: "{{ power_switch }}"
+
+          - delay:
+              seconds: 5
+
+          - condition: template
+            value_template: "{{ is_state(power_switch, 'off') }}"
+
+          - service: "{{ notify_service }}"
+            data:
+              title: "⚡ {{ device_name }}"
+              message: "Alerte courant : la prise n'alimente plus (switch = OFF). Tentative de réactivation effectuée, sans succès."
+              data:
+                notification_icon: mdi:power-plug-off
+                push:
+                  sound:
+                    name: default
+                    critical: 1
+                    volume: 1.0
+                tag: "{{ notification_tag }}_courant"
+                url: /dashboard-config/
+                clickAction: /dashboard-config/
+
+      - conditions:
+          - condition: trigger
+            id: courant_on
+        sequence:
+          - service: "{{ notify_service }}"
+            data:
+              title: "⚡ {{ device_name }}"
+              message: "Courant rétabli ✅ (switch = ON)."
+              data:
+                notification_icon: mdi:power-plug
+                tag: "{{ notification_tag }}_courant"
+                url: /dashboard-config/
+                clickAction: /dashboard-config/
+
+      - conditions:
+          - condition: trigger
+            id: debranche
+        sequence:
+          - service: "{{ notify_service }}"
+            data:
+              title: "🔌 {{ device_name }}"
+              message: "La prise Shelly est hors ligne depuis {{ offline_duration }} minutes"
+              data:
+                notification_icon: mdi:power-plug-off
+                push:
+                  sound:
+                    name: default
+                    critical: 1
+                    volume: 1.0
+                tag: "{{ notification_tag }}"
+                url: /dashboard-config/
+                clickAction: /dashboard-config/
+      - conditions:
+          - condition: trigger
+            id: rebranche
+        sequence:
+          - service: "{{ notify_service }}"
+            data:
+              title: "🔌 {{ device_name }}"
+              message: "La prise Shelly est de nouveau connectée ✅"
+              data:
+                notification_icon: mdi:power-plug
+                tag: "{{ notification_tag }}"
+                url: /dashboard-config/
+                clickAction: /dashboard-config/
+
+      - conditions:
+          - condition: trigger
+            id: daily_check
+          - condition: state
+            entity_id: !input device_sensor
+            state: "on"
+          - condition: template
+            value_template: "{{ is_state(power_switch, 'off') }}"
+        sequence:
+          - service: switch.turn_on
+            target:
+              entity_id: "{{ power_switch }}"
+
+          - delay:
+              seconds: 5
+
+          - condition: template
+            value_template: "{{ is_state(power_switch, 'off') }}"
+
+          - service: "{{ notify_service }}"
+            data:
+              title: "⚡ {{ device_name }}"
+              message: "Alerte courant : la prise est connectée, mais n'alimente pas (switch = OFF). Tentative de réactivation effectuée, sans succès."
+              data:
+                notification_icon: mdi:power-plug-off
+                push:
+                  sound:
+                    name: default
+                    critical: 1
+                    volume: 1.0
+                tag: "{{ notification_tag }}_courant"
+                url: /dashboard-config/
+                clickAction: /dashboard-config/
