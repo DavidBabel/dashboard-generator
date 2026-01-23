@@ -1,6 +1,6 @@
 # Statut des Blueprints
 
-_Généré automatiquement par post-commit_
+_Généré automatiquement par pre-commit_
 
 ✅ `auto_lights_off.yaml` : # ✅ working
 ✅ `auto_lights_off_nobody_home.yaml` : # ✅ working
@@ -10,7 +10,7 @@ _Généré automatiquement par post-commit_
 ✅ `healthcheck_addon_running.yaml` : # ✅ working
 ✅ `healthcheck_capteur_presence.yaml` : # ✅ working
 ✅ `healthcheck_ha_distants.yaml` : # ✅ working
-🧪 `healthcheck_prise_shelly.yaml` : # 🧪 to test : install hooks
+✅ `healthcheck_prise_shelly.yaml` : # ✅ working
 ✅ `healthcheck_warning_device_unplug.yaml` : # ✅ working
 ✅ `media_start_multimedia.yaml` : # ✅ working
 ✅ `rebooted_ha.yaml` : # ✅ working
