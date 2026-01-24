@@ -1,10 +1,13 @@
-# Version: 1.1.4
-# ✅ working
+# Version: 1.1.5
+# 🧪 to test : prevent everything off when doing something else that SHIELD
 # Appartement: Carmes
+#TODO : si source =/= shield, alors ne rien faire
+# Ajouter un bouton pour forcer le scenario d'extinction sur la telecommande et via les webhooks
+# Ajoute un all zone stereo toggle en blueprint
 blueprint:
   name: "🎬 Contrôle Cinéma Epson & Shield"
   description: >
-    Version: 1.1.4
+    Version: 1.1.5
     📽️ Allume le projecteur Epson et l’ampli Denon via la Shield ou un bouton Hue,
     et les éteint (double OFF Epson).
 
@@ -30,14 +33,40 @@ blueprint:
         entity:
           filter:
             domain: switch
-    denon_switch:
-      name: "🔊 Ampli Denon (switch Broadlink Manager)"
-      description: "Ex: switch.broadlink_denon_avr_x2800h"
-      default: switch.broadlink_denon_avr_x2800h
+    # --------------------------------------------------------------------------
+    # Ampli Denon (media_player) : lecture de la source courante
+    # Type attendu : media_player.xxx (Denon / HEOS)
+    # Valeur attendue : attribut `source` renseigné (ex: "SHIELD")
+    # Utilisation :
+    #  - pilotage ON/OFF via l'intégration Denon officielle
+    #  - sert à ignorer l'extinction quand la Shield passe en veille
+    # --------------------------------------------------------------------------
+    denon_media_player:
+      name: "🎚️ Ampli Denon (media_player) pour la source"
+      description: >
+        Entité `media_player` de l'ampli Denon (intégration officielle).
+        Permet de piloter ON/OFF et de lire la source en cours via l'attribut `source`.
+        Utilisé uniquement pour ignorer l'extinction quand la Shield passe en veille alors que le Denon
+        n'est pas sur la source Shield.
+      default: media_player.denon_avr_x2800h
       selector:
         entity:
           filter:
-            domain: switch
+            domain: media_player
+
+    # --------------------------------------------------------------------------
+    # Nom de la source Denon correspondant à la Shield
+    # Type attendu : texte
+    # Valeur attendue : EXACTEMENT le nom de la source dans le Denon (ex: "SHIELD")
+    # --------------------------------------------------------------------------
+    denon_shield_source_name:
+      name: "🔌 Nom de la source Denon pour la Shield"
+      description: >
+        Nom EXACT de la source Denon correspondant à la Shield (ex: "SHIELD").
+        Sert au filtrage lors du passage en veille (trigger `extinction` -> to: standby).
+      default: "SHIELD"
+      selector:
+        text:
     projector_screen_cover:
       name: "🪟 Écran de projection (cover Broadlink Manager)"
       description: "Ex: cover.broadlink_celexon_projector"
@@ -96,6 +125,8 @@ blueprint:
 mode: restart
 
 variables:
+  denon_player_entity: !input denon_media_player
+  denon_shield_source_label: !input denon_shield_source_name
   sync_box_devices: !input hue_sync_box_devices
   entertainment_option: !input hue_sync_box_entertainment_option
   sync_box_entities: >-
@@ -227,9 +258,31 @@ action:
                   - action: switch.turn_on
                     target:
                       entity_id: !input epson_switch
-                  - action: switch.turn_on
+                  - action: media_player.turn_on
                     target:
-                      entity_id: !input denon_switch
+                      entity_id: !input denon_media_player
+                  # ------------------------------------------------------------------------
+                  # Par défaut : on force toujours l'entrée Denon sur la Shield
+                  # (nom de source configurable via `denon_shield_source_name`).
+                  # ------------------------------------------------------------------------
+                  - choose:
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ (denon_shield_source_label | default('') | string | length) > 0 }}"
+                        sequence:
+                          - wait_template: >-
+                              {{
+                                denon_player_entity is string
+                                and (state_attr(denon_player_entity, 'source_list') or []) | length > 0
+                              }}
+                            timeout: "00:00:10"
+                            continue_on_timeout: true
+                          - action: media_player.select_source
+                            target:
+                              entity_id: !input denon_media_player
+                            data:
+                              source: "{{ denon_shield_source_label }}"
+                            continue_on_error: true
           - choose:
               - conditions:
                   - condition: template
@@ -293,6 +346,25 @@ action:
           - condition: trigger
             id: "extinction"
         sequence:
+          # ------------------------------------------------------------------------
+          # Filtre anti-faux-positif : si le Shield passe en off OU standby,
+          # on ne coupe le setup que si l'ampli Denon est sur la source "SHIELD".
+          # ------------------------------------------------------------------------
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: >-
+                      {{
+                        trigger.to_state is not none
+                        and (
+                          (state_attr(denon_player_entity, 'source') | default('') | string | upper)
+                          != (denon_shield_source_label | default('SHIELD') | string | upper)
+                        )
+                      }}
+                sequence:
+                  - stop: >-
+                      Extinction ignorée : la source Denon n'est pas "{{ denon_shield_source_label }}"
+
           # Séquence spécifique Epson
           - parallel:
               - sequence:
@@ -305,9 +377,9 @@ action:
                     target:
                       entity_id: !input projector_screen_cover
               - sequence:
-                  - action: switch.turn_off
+                  - action: media_player.turn_off
                     target:
-                      entity_id: !input denon_switch
+                      entity_id: !input denon_media_player
                   - delay: "00:00:07"
                   - action: switch.turn_off
                     target:

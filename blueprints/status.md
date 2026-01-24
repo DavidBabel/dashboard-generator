@@ -1,6 +1,6 @@
 # Statut des Blueprints
 
-_Généré automatiquement par pre-commit_
+_Généré automatiquement par post-commit_
 
 ✅ `auto_lights_off.yaml` : # ✅ working
 ✅ `auto_lights_off_nobody_home.yaml` : # ✅ working
@@ -12,7 +12,7 @@ _Généré automatiquement par pre-commit_
 ✅ `healthcheck_ha_distants.yaml` : # ✅ working
 ✅ `healthcheck_prise_shelly.yaml` : # ✅ working
 ✅ `healthcheck_warning_device_unplug.yaml` : # ✅ working
-✅ `media_start_multimedia.yaml` : # ✅ working
+🧪 `media_start_multimedia.yaml` : # 🧪 to test : prevent everything off when doing something else that SHIELD
 ✅ `rebooted_ha.yaml` : # ✅ working
 ✅ `security_alerts.yaml` : # ✅ working
 ✅ `security_kill_app.yaml` : # ✅ working
