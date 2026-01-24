@@ -1,13 +1,26 @@
 alias: Toggle Hue Sync
 description: Active ou désactive la synchro HDMI du boîtier 8K via Webhook
+
+# ------------------------------------------------------------------------------
+# Déclencheur : appel webhook local
+# Méthode : POST
+# URL (exemple) : /api/webhook/toggle-hue-sync
+# Objectif : toggle simple de la synchro des lumières sur la Hue Sync Box.
+# ------------------------------------------------------------------------------
 triggers:
   - trigger: webhook
     allowed_methods:
       - POST
     local_only: true
     webhook_id: toggle-hue-sync
+
 conditions: []
+
 actions:
+  # --------------------------------------------------------------------------
+  # Action : toggle de l'entité switch de synchronisation Hue Sync Box
+  # Remarque : l'entité dépend de ta config, ici on vise l'entité par défaut.
+  # --------------------------------------------------------------------------
   - action: switch.toggle
     target:
       entity_id: switch.sync_box_synchronisation_des_lumieres

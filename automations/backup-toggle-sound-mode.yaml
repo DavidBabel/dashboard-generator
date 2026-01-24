@@ -5,6 +5,11 @@ description: >
   Se base sur les libellés réellement disponibles dans `sound_mode_list`.
 
 trigger:
+  # --------------------------------------------------------------------------
+  # Déclencheur : appel webhook local
+  # Méthode : POST
+  # URL (exemple) : /api/webhook/toggle-sound-mode
+  # --------------------------------------------------------------------------
   - platform: webhook
     allowed_methods:
       - POST
@@ -14,11 +19,22 @@ trigger:
 condition: []
 
 action:
+  # --------------------------------------------------------------------------
+  # Variables de base
+  # - denon_entity : media_player Denon (intégration officielle)
+  # - current_mode : mode audio courant (attribut `sound_mode`)
+  # - available_modes : liste des modes audio disponibles (attribut `sound_mode_list`)
+  # --------------------------------------------------------------------------
   - variables:
       denon_entity: media_player.denon_avr_x2800h
       current_mode: "{{ state_attr(denon_entity, 'sound_mode') | default('') | string }}"
       available_modes: "{{ state_attr(denon_entity, 'sound_mode_list') or [] }}"
 
+      # ----------------------------------------------------------------------
+      # Détection des libellés "cibles" dans `sound_mode_list`
+      # Important : on ne force pas un texte fixe, on choisit le libellé EXACT
+      # présent dans la liste (selon modèle / firmware / langue du Denon).
+      # ----------------------------------------------------------------------
       stereo_option: >-
         {% set opts = available_modes %}
         {% set ns = namespace(match='') %}
@@ -64,11 +80,23 @@ action:
         {% endfor %}
         {{ ns.match }}
 
+      # ----------------------------------------------------------------------
+      # Normalisation du mode courant + flags d'état
+      # - is_stereo : "stereo" mais pas "all zone stereo"
+      # - is_all_zone : contient all + zone + stereo
+      # - is_dolby : contient dolby
+      # ----------------------------------------------------------------------
       current_norm: "{{ current_mode | lower }}"
       is_stereo: "{{ ('stereo' in current_norm) and not (('all' in current_norm) and ('zone' in current_norm)) }}"
       is_all_zone: "{{ ('all' in current_norm) and ('zone' in current_norm) and ('stereo' in current_norm) }}"
       is_dolby: "{{ 'dolby' in current_norm }}"
 
+      # ----------------------------------------------------------------------
+      # Rotation demandée : stereo -> all zone stereo -> dolby -> stereo
+      # Fallbacks :
+      # - si un mode n'existe pas dans sound_mode_list, on saute au suivant
+      # - si mode courant inconnu : on tente stereo, sinon premier élément de la liste
+      # ----------------------------------------------------------------------
       next_mode: >-
         {% if is_stereo %}
           {{ all_zone_stereo_option if (all_zone_stereo_option | length > 0) else (dolby_option if (dolby_option | length > 0) else stereo_option) }}
@@ -81,6 +109,9 @@ action:
         {% endif %}
 
   - choose:
+      # ----------------------------------------------------------------------
+      # Application du mode suivant si calculé
+      # ----------------------------------------------------------------------
       - conditions:
           - condition: template
             value_template: "{{ next_mode | length > 0 }}"
