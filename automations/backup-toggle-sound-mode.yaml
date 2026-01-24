@@ -1,0 +1,94 @@
+alias: "🔊 Denon : rotation mode audio (stereo / all zone / dolby)"
+description: >
+  Webhook pour faire tourner le mode audio du Denon :
+  stereo -> all zone stereo -> dolby -> stereo (etc).
+  Se base sur les libellés réellement disponibles dans `sound_mode_list`.
+
+trigger:
+  - platform: webhook
+    allowed_methods:
+      - POST
+    local_only: true
+    webhook_id: toggle-sound-mode
+
+condition: []
+
+action:
+  - variables:
+      denon_entity: media_player.denon_avr_x2800h
+      current_mode: "{{ state_attr(denon_entity, 'sound_mode') | default('') | string }}"
+      available_modes: "{{ state_attr(denon_entity, 'sound_mode_list') or [] }}"
+
+      stereo_option: >-
+        {% set opts = available_modes %}
+        {% set ns = namespace(match='') %}
+        {% for o in opts %}
+          {% set lo = (o | string | lower) %}
+          {% if lo == 'stereo' %}
+            {% set ns.match = o %}
+            {% break %}
+          {% endif %}
+        {% endfor %}
+        {% if ns.match == '' %}
+          {% for o in opts %}
+            {% set lo = (o | string | lower) %}
+            {% if ('stereo' in lo) and not (('all' in lo) and ('zone' in lo)) %}
+              {% set ns.match = o %}
+              {% break %}
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+        {{ ns.match }}
+
+      all_zone_stereo_option: >-
+        {% set opts = available_modes %}
+        {% set ns = namespace(match='') %}
+        {% for o in opts %}
+          {% set lo = (o | string | lower) %}
+          {% if ('all' in lo) and ('zone' in lo) and ('stereo' in lo) %}
+            {% set ns.match = o %}
+            {% break %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.match }}
+
+      dolby_option: >-
+        {% set opts = available_modes %}
+        {% set ns = namespace(match='') %}
+        {% for o in opts %}
+          {% set lo = (o | string | lower) %}
+          {% if 'dolby' in lo %}
+            {% set ns.match = o %}
+            {% break %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.match }}
+
+      current_norm: "{{ current_mode | lower }}"
+      is_stereo: "{{ ('stereo' in current_norm) and not (('all' in current_norm) and ('zone' in current_norm)) }}"
+      is_all_zone: "{{ ('all' in current_norm) and ('zone' in current_norm) and ('stereo' in current_norm) }}"
+      is_dolby: "{{ 'dolby' in current_norm }}"
+
+      next_mode: >-
+        {% if is_stereo %}
+          {{ all_zone_stereo_option if (all_zone_stereo_option | length > 0) else (dolby_option if (dolby_option | length > 0) else stereo_option) }}
+        {% elif is_all_zone %}
+          {{ dolby_option if (dolby_option | length > 0) else stereo_option }}
+        {% elif is_dolby %}
+          {{ stereo_option if (stereo_option | length > 0) else all_zone_stereo_option }}
+        {% else %}
+          {{ stereo_option if (stereo_option | length > 0) else (available_modes[0] if (available_modes | length > 0) else '') }}
+        {% endif %}
+
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ next_mode | length > 0 }}"
+        sequence:
+          - service: media_player.select_sound_mode
+            target:
+              entity_id: "{{ denon_entity }}"
+            data:
+              sound_mode: "{{ next_mode }}"
+
+mode: single
