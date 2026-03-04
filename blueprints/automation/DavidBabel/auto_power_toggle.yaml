@@ -1,0 +1,53 @@
+# Version: 1.0.0
+# ✅ to test
+# Appartement: Carmes
+blueprint:
+  name: "Plage Horaire - Contrôle de Prise"
+  description: "Allume une prise à une heure précise et l'éteint à une autre."
+  domain: automation
+  input:
+    target_plug:
+      name: Prise à piloter
+      description: L'entité (prise/switch) qui doit être activée.
+      selector:
+        entity:
+          domain: switch
+    time_on:
+      name: Heure d'allumage
+      description: L'heure à laquelle la prise doit s'allumer (ON).
+      default: "08:00:00"
+      selector:
+        time: {}
+    time_off:
+      name: Heure d'extinction
+      description: L'heure à laquelle la prise doit s'éteindre (OFF).
+      default: "20:00:00"
+      selector:
+        time: {}
+
+mode: parallel # Permet de gérer les déclenchements ON et OFF sans conflit
+
+trigger:
+  - platform: time
+    at: !input time_on
+    id: "allumer"
+  - platform: time
+    at: !input time_off
+    id: "eteindre"
+
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: "allumer"
+        sequence:
+          - service: switch.turn_on
+            target:
+              entity_id: !input target_plug
+      - conditions:
+          - condition: trigger
+            id: "eteindre"
+        sequence:
+          - service: switch.turn_off
+            target:
+              entity_id: !input target_plug
