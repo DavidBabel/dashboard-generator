@@ -1,12 +1,12 @@
 # Statut des Blueprints
 
-_Généré automatiquement par post-commit_
+_Généré automatiquement par pre-commit_
 
 ✅ `auto_lights_off.yaml` : # ✅ working
 ✅ `auto_lights_off_nobody_home.yaml` : # ✅ working
-✅ `auto_lights_toggle.yaml` : tested working
+✅ `auto_lights_toggle.yaml` : # ✅ working
 ✅ `auto_lights_warning_nobody_detected_for_long.yaml` : # ✅ working
-✅ `auto_power_toggle.yaml` : tested working
+✅ `auto_power_toggle.yaml` : # ✅ working
 ✅ `batteries_check.yaml` : # ✅ working
 ✅ `button_nettoyage_chats.yaml` : # ✅ working
 ✅ `healthcheck_addon_running.yaml` : # ✅ working
