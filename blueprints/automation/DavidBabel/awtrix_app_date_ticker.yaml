@@ -1,5 +1,5 @@
-# Version: 1.0.2
-# 🧪 to test : allow trigger
+# Version: 1.0.3
+# 🧪 to test : test
 # Appartement: Carmes
 blueprint:
   name: "📆 Awtrix - Date Ticker"
@@ -9,7 +9,7 @@ blueprint:
     awtrix_prefix:
       name: Préfixe MQTT Awtrix
       description: "Le préfixe MQTT de votre horloge."
-      default: "awtrix"
+      default: "awtrix_6c95a0"
     app_name:
       name: Nom de l'app
       description: "Le nom de l'application custom (ex: noel, voyage, tabac)."
@@ -32,7 +32,7 @@ blueprint:
     icon:
       name: Icône (Optionnel)
       description: "ID de l'icône Awtrix (ex: 81)."
-      default: ""
+      default: "16948"
     update_time:
       name: Heure de mise à jour
       description: "À quelle heure l'affichage doit-il s'actualiser ?"
@@ -57,32 +57,22 @@ action:
       suffix_text: !input suffix_text
       icon: !input icon
 
+  - service: mqtt.publish
+    data:
+      qos: "0"
+      retain: false
+      topic: "{{ awtrix_prefix }}/custom/{{ app_name }}"
       payload: >-
         {% set target_dt = strptime(target_date, '%Y-%m-%d', none) %}
         {% if target_dt != none %}
           {% set diff_days = (target_dt.date() - now().date()).days %}
           {% set abs_days = diff_days | abs %}
           {% set final_text = (prefix_text ~ " " ~ abs_days ~ " " ~ suffix_text) | trim | replace("  ", " ") %}
-
-          {% set data = {
-             "text": final_text,
-             "pushIcon": 2,
-             "scrollSpeed": 100,
-             "duration": 10,
-             "textCase": 2
-          } %}
-
           {% if icon | length > 0 %}
-            {% set data = dict(data, icon=icon) %}
+            {"icon": "{{ icon }}", "text": "{{ final_text }}", "pushIcon": 2, "scrollSpeed": 100, "duration": 10, "textCase": 2}
+          {% else %}
+            {"text": "{{ final_text }}", "pushIcon": 2, "scrollSpeed": 100, "duration": 10, "textCase": 2}
           {% endif %}
-
-          {{ data | to_json }}
         {% else %}
           {"text": "Date Err!"}
         {% endif %}
-
-  - service: mqtt.publish
-    data:
-      topic: "{{ awtrix_prefix }}/custom/{{ app_name }}"
-      payload: "{{ payload }}"
-      retain: false
