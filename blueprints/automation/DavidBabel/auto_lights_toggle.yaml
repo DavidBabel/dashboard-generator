@@ -1,8 +1,8 @@
-# Version: 1.0.2
-# 🧪 to test : switch sur le detecteur reel
+# Version: 1.0.3
+# 🧪 to test : tested working
 # Appartement: Carmes
 blueprint:
-  name: "Détection de Présence Bureau (Awtrix)"
+  name: "🚥 Détection de Présence Bureau (Awtrix)"
   description: "Allume l'Awtrix Matrix sur détection et s'éteint après un délai."
   domain: automation
   input:

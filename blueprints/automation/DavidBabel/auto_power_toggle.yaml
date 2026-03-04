@@ -1,8 +1,8 @@
-# Version: 1.0.1
-# 🧪 to test : trigger hooks
+# Version: 1.0.2
+# 🧪 to test : tested working
 # Appartement: Carmes
 blueprint:
-  name: "Plage Horaire - Contrôle de Prise"
+  name: "🔌 Plage Horaire - Contrôle de Prise"
   description: "Allume une prise à une heure précise et l'éteint à une autre."
   domain: automation
   input:
