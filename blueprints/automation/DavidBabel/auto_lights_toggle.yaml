@@ -1,0 +1,65 @@
+# Version: 1.0.0
+# ✅ working
+# Appartement: Carmes
+blueprint:
+  name: "Détection de Présence Bureau (Awtrix)"
+  description: "Allume l'Awtrix Matrix sur détection et s'éteint après un délai."
+  domain: automation
+  input:
+    presence_sensor:
+      name: Détecteur de présence
+      description: Le capteur qui déclenche l'allumage.
+      default: binary_sensor.presence_bureau_temporisee
+      selector:
+        entity:
+          domain: binary_sensor
+          device_class: occupancy
+    target_light:
+      name: Lumière à piloter
+      description: La lampe qui sera allumée/éteinte.
+      default: light.awtrix_matrix
+      selector:
+        entity:
+          domain: light
+    delay_off:
+      name: Délai avant extinction
+      description: Temps d'attente après la fin de détection avant d'éteindre la lumière.
+      default: 60
+      selector:
+        number:
+          min: 0
+          max: 600
+          unit_of_measurement: seconds
+
+mode: restart
+
+trigger:
+  - platform: state
+    entity_id: !input presence_sensor
+    from: "off"
+    to: "on"
+    id: "detecte"
+  - platform: state
+    entity_id: !input presence_sensor
+    from: "on"
+    to: "off"
+    for:
+      seconds: !input delay_off
+    id: "parti"
+
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: "detecte"
+        sequence:
+          - service: light.turn_on
+            target:
+              entity_id: !input target_light
+      - conditions:
+          - condition: trigger
+            id: "parti"
+        sequence:
+          - service: light.turn_off
+            target:
+              entity_id: !input target_light
