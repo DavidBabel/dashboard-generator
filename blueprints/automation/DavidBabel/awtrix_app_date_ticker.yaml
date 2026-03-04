@@ -1,0 +1,82 @@
+# Version: 1.0.1
+# 🧪 to test : test date ticker
+# Appartement: Carmes
+blueprint:
+  name: "📆 Awtrix - Date Ticker"
+  description: "Application Date Ticker pour Awtrix."
+  domain: automation
+  input:
+    awtrix_prefix:
+      name: Préfixe MQTT Awtrix
+      description: "Le préfixe MQTT de votre horloge."
+      default: "awtrix"
+    app_name:
+      name: Nom de l'app
+      description: "Le nom de l'application custom (ex: noel, voyage, tabac)."
+      default: "date_ticker"
+    target_date:
+      name: Date Cible (AAAA-MM-JJ)
+      description: "La date de l'événement."
+      default: "2024-12-25"
+      selector:
+        text:
+          type: date
+    prefix_text:
+      name: Texte avant
+      description: "Sera affiché avant le nombre de jours (ex: 'Noël:'). Laissez vide si non souhaité."
+      default: ""
+    suffix_text:
+      name: Texte après
+      description: "Sera affiché après le nombre de jours (ex: 'j', 'jours')."
+      default: "j"
+    icon:
+      name: Icône (Optionnel)
+      description: "ID de l'icône Awtrix (ex: 81)."
+      default: ""
+
+trigger:
+  - platform: time
+    at: "00:01:00"
+  - platform: homeassistant
+    event: start
+  - platform: event
+    event_type: automation_reloaded
+
+action:
+  - variables:
+      awtrix_prefix: !input awtrix_prefix
+      app_name: !input app_name
+      target_date: !input target_date
+      prefix_text: !input prefix_text
+      suffix_text: !input suffix_text
+      icon: !input icon
+
+      payload: >-
+        {% set target_dt = strptime(target_date, '%Y-%m-%d', none) %}
+        {% if target_dt != none %}
+          {% set diff_days = (target_dt.date() - now().date()).days %}
+          {% set abs_days = diff_days | abs %}
+          {% set final_text = (prefix_text ~ " " ~ abs_days ~ " " ~ suffix_text) | trim | replace("  ", " ") %}
+
+          {% set data = {
+             "text": final_text,
+             "pushIcon": 2,
+             "scrollSpeed": 100,
+             "duration": 10,
+             "textCase": 2
+          } %}
+
+          {% if icon | length > 0 %}
+            {% set data = dict(data, icon=icon) %}
+          {% endif %}
+
+          {{ data | to_json }}
+        {% else %}
+          {"text": "Date Err!"}
+        {% endif %}
+
+  - service: mqtt.publish
+    data:
+      topic: "{{ awtrix_prefix }}/custom/{{ app_name }}"
+      payload: "{{ payload }}"
+      retain: false

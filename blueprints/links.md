@@ -1,6 +1,7 @@
 # Appartement: Carmes
 https://raw.githubusercontent.com/DavidBabel/ha/master/blueprints/automation/DavidBabel/auto_lights_toggle.yaml
 https://raw.githubusercontent.com/DavidBabel/ha/master/blueprints/automation/DavidBabel/auto_power_toggle.yaml
+https://raw.githubusercontent.com/DavidBabel/ha/master/blueprints/automation/DavidBabel/awtrix_app_date_ticker.yaml
 https://raw.githubusercontent.com/DavidBabel/ha/master/blueprints/automation/DavidBabel/button_nettoyage_chats.yaml
 https://raw.githubusercontent.com/DavidBabel/ha/master/blueprints/automation/DavidBabel/healthcheck_ha_distants.yaml
 https://raw.githubusercontent.com/DavidBabel/ha/master/blueprints/automation/DavidBabel/media_start_multimedia.yaml
