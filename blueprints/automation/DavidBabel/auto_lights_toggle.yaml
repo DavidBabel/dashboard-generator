@@ -1,5 +1,5 @@
-# Version: 1.0.1
-# 🧪 to test : trigger hooks
+# Version: 1.0.2
+# 🧪 to test : switch sur le detecteur reel
 # Appartement: Carmes
 blueprint:
   name: "Détection de Présence Bureau (Awtrix)"
@@ -9,7 +9,7 @@ blueprint:
     presence_sensor:
       name: Détecteur de présence
       description: Le capteur qui déclenche l'allumage.
-      default: binary_sensor.presence_bureau_temporisee
+      default: binary_sensor.presence_bureau_presence
       selector:
         entity:
           domain: binary_sensor
