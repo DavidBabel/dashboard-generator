@@ -1,5 +1,5 @@
-# Version: 1.0.0
-# ✅ to test
+# Version: 1.0.1
+# 🧪 to test : trigger hooks
 # Appartement: Carmes
 blueprint:
   name: "Détection de Présence Bureau (Awtrix)"
