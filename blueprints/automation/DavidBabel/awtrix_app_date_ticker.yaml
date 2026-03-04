@@ -1,5 +1,5 @@
-# Version: 1.0.1
-# 🧪 to test : test date ticker
+# Version: 1.0.2
+# 🧪 to test : allow trigger
 # Appartement: Carmes
 blueprint:
   name: "📆 Awtrix - Date Ticker"
@@ -33,10 +33,16 @@ blueprint:
       name: Icône (Optionnel)
       description: "ID de l'icône Awtrix (ex: 81)."
       default: ""
+    update_time:
+      name: Heure de mise à jour
+      description: "À quelle heure l'affichage doit-il s'actualiser ?"
+      default: "00:01:00"
+      selector:
+        time:
 
 trigger:
   - platform: time
-    at: "00:01:00"
+    at: !input update_time
   - platform: homeassistant
     event: start
   - platform: event
